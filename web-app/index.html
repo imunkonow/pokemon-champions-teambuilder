@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ポケチャン チームビルダー</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0d0f1a; color: #dde0f0; font-family: 'Segoe UI','Noto Sans JP',sans-serif; font-size: 13px; height: 100vh; overflow: hidden; }
+
+/* ── Header ── */
+header { background: #13162a; border-bottom: 1px solid #2a3060; padding: 10px 16px; display: flex; align-items: center; gap: 16px; height: 48px; }
+header h1 { font-size: 14px; font-weight: 700; color: #7ab4ff; letter-spacing: 0.06em; white-space: nowrap; }
+.tabs { display: flex; gap: 4px; }
+.tab { padding: 5px 14px; background: #1e2240; border: 1px solid #2a3060; border-radius: 4px; color: #8090b8; cursor: pointer; font-size: 12px; transition: all 0.15s; }
+.tab.active { background: #2a50c0; border-color: #4a70e0; color: #fff; font-weight: 600; }
+.tab:hover:not(.active) { border-color: #4a70e0; color: #c0d0f0; }
+.reg-badge { margin-left: auto; background: #0f2a1e; border: 1px solid #1e5a38; color: #3dc870; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.btn-dl { background: #1a2438; border: 1px solid #2a4070; color: #7ab4ff; padding: 3px 10px; border-radius: 4px; font-size: 10px; cursor: pointer; transition: all 0.15s; }
+.btn-dl:hover { background: #2a3a58; }
+
+/* ── Layout ── */
+.layout { display: grid; grid-template-columns: 1fr 300px; grid-template-rows: 1fr 1fr; gap: 10px; padding: 10px; height: calc(100vh - 48px); }
+.import-panel { grid-column: 2; grid-row: 1 / 3; }
+
+/* ── Panel ── */
+.panel { background: #13162a; border: 1px solid #1e2448; border-radius: 8px; padding: 14px; overflow: hidden; display: flex; flex-direction: column; }
+.panel-title { font-size: 10px; font-weight: 700; color: #5880d0; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 10px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
+
+/* ── Dup warning ── */
+.dup-warning { background: #2a1510; border: 1px solid #6a2020; border-radius: 4px; color: #ff8080; font-size: 10px; padding: 5px 8px; margin-bottom: 8px; flex-shrink: 0; line-height: 1.6; }
+
+/* ── Team grid ── */
+.team-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex: 1; }
+.slot { border: 2px dashed #1e2448; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden; min-height: 0; }
+.slot:hover:not(.filled) { border-color: #2a50c0; background: #161a30; }
+.slot.filled { border-style: solid; border-color: #2a3060; cursor: default; align-items: flex-start; }
+.slot.filled.dup-poke { border-color: #8a3040 !important; }
+.slot.filled.dup-item { box-shadow: 0 0 0 1px #8a6020; }
+.slot-empty { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #2a3060; }
+.slot-empty svg { width: 24px; height: 24px; opacity: 0.4; }
+.slot-empty span { font-size: 11px; }
+
+.poke-card { width: 100%; padding: 8px 8px 8px 8px; height: 100%; position: relative; }
+.poke-sprite { position: absolute; top: 4px; right: 4px; width: 52px; height: 52px; image-rendering: pixelated; opacity: 0.9; pointer-events: none; }
+.poke-sprite-placeholder { position: absolute; top: 4px; right: 4px; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; font-size: 22px; opacity: 0.5; }
+.poke-name { font-weight: 700; font-size: 12px; margin-bottom: 2px; cursor: pointer; padding-right: 56px; line-height: 1.3; }
+.poke-name:hover { color: #7ab4ff; }
+.poke-item { font-size: 10px; color: #7888a8; margin-bottom: 4px; }
+.poke-types { display: flex; gap: 3px; margin-bottom: 5px; flex-wrap: wrap; }
+.type-badge { font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: 700; color: #fff; letter-spacing: 0.03em; }
+.poke-moves { font-size: 9px; color: #606880; line-height: 1.65; }
+.poke-nature { font-size: 9px; color: #506060; margin-top: 3px; }
+.btn-remove { position: absolute; top: 4px; left: 4px; background: rgba(180,40,40,0.25); border: none; color: #ff7070; border-radius: 3px; width: 16px; height: 16px; cursor: pointer; font-size: 11px; line-height: 16px; text-align: center; transition: background 0.15s; }
+.btn-remove:hover { background: rgba(200,50,50,0.5); }
+.btn-edit { position: absolute; bottom: 4px; right: 4px; background: rgba(40,80,180,0.3); border: 1px solid #2a4070; color: #7ab4ff; border-radius: 3px; padding: 2px 6px; cursor: pointer; font-size: 9px; transition: background 0.15s; }
+.btn-edit:hover { background: rgba(60,100,200,0.5); }
+
+/* ── Type chart ── */
+.type-chart-grid { flex: 1; overflow-y: auto; }
+.type-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.type-label { flex-shrink: 0; font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: 700; color: #fff; width: 68px; text-align: center; }
+.weakness-dots { display: flex; gap: 2px; flex-wrap: wrap; }
+.wd { width: 16px; height: 16px; border-radius: 50%; font-size: 8px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.wd-4 { background: #b02020; color: #fff; }
+.wd-2 { background: #d06020; color: #fff; }
+.wd-h { background: #1a3a28; color: #3dc870; border: 1px solid #1e5a38; }
+.wd-0 { background: #101520; color: #2a3060; border: 1px solid #1e2448; }
+.chart-empty { color: #2a3060; font-size: 11px; text-align: center; padding: 30px 0; }
+
+/* ── Right panel tabs ── */
+.panel-tabs { display: flex; gap: 4px; margin-bottom: 8px; flex-shrink: 0; }
+.ptab { flex: 1; padding: 5px; background: #1a1e38; border: 1px solid #1e2448; border-radius: 4px; color: #6070a0; font-size: 11px; cursor: pointer; transition: all 0.15s; }
+.ptab.active { background: #2a50c0; border-color: #4a70e0; color: #fff; font-weight: 600; }
+.ptab-content { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+/* ── My Pokemon tab ── */
+.my-search { width: 100%; background: #0a0c18; border: 1px solid #1e2448; border-radius: 4px; color: #b0c0e0; padding: 6px 8px; font-size: 11px; margin-bottom: 6px; flex-shrink: 0; }
+.my-search:focus { outline: none; border-color: #2a50c0; }
+.my-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.my-group-name { font-size: 10px; font-weight: 700; color: #4060a0; display: flex; align-items: center; gap: 5px; padding: 3px 2px 2px; }
+.my-group-sprite { width: 22px; height: 22px; image-rendering: pixelated; opacity: 0.85; }
+.my-variant { background: #1a1e38; border: 1px solid #1e2448; border-radius: 5px; padding: 5px 8px; cursor: pointer; transition: all 0.15s; margin-left: 6px; margin-bottom: 2px; }
+.my-variant:hover { border-color: #2a50c0; background: #161a30; }
+.my-variant.in-team { border-color: #1e5a38; background: #0f2a1e; cursor: default; opacity: 0.6; }
+.my-variant-item { font-size: 10px; color: #7888a8; }
+.my-variant-moves { font-size: 9px; color: #404860; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.my-variant-check { color: #3dc870; font-size: 10px; margin-left: 4px; }
+.my-empty { color: #2a3060; font-size: 11px; text-align: center; padding: 20px 0; }
+
+/* ── Import tab ── */
+.import-textarea { width: 100%; height: 120px; background: #0a0c18; border: 1px solid #1e2448; border-radius: 6px; color: #b0c0e0; padding: 10px; font-family: 'Consolas','Courier New',monospace; font-size: 11px; resize: none; line-height: 1.65; flex-shrink: 0; transition: border-color 0.15s; }
+.import-textarea:focus { outline: none; border-color: #2a50c0; }
+.import-textarea::placeholder { color: #2a3060; }
+.import-actions { display: flex; gap: 5px; margin: 6px 0; flex-shrink: 0; }
+.btn-upload { background: #1a2438; border: 1px solid #2a3860; color: #7090c0; padding: 6px 9px; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 600; transition: all 0.15s; white-space: nowrap; }
+.btn-upload:hover { background: #2a3448; }
+.btn-parse { background: #2a50c0; border: none; color: #fff; padding: 6px; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 700; flex: 1; transition: background 0.15s; }
+.btn-parse:hover { background: #3a60d0; }
+.pool-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.pool-empty { color: #2a3060; font-size: 11px; text-align: center; padding: 20px 0; }
+.pool-item { background: #1a1e38; border: 1px solid #1e2448; border-radius: 6px; padding: 7px 10px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
+.pool-item:hover { border-color: #2a50c0; background: #161a30; }
+.pool-item.in-team { border-color: #1e5a38; background: #0f2a1e; cursor: default; opacity: 0.6; }
+.pool-sprite { width: 28px; height: 28px; image-rendering: pixelated; flex-shrink: 0; }
+.pool-item-info { flex: 1; min-width: 0; }
+.pool-item-name { font-weight: 700; font-size: 12px; }
+.pool-item-sub { font-size: 10px; color: #505878; line-height: 1.4; }
+.pool-check { color: #3dc870; font-size: 10px; margin-left: 4px; }
+
+/* ── Modal ── */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,10,0.75); z-index: 200; align-items: center; justify-content: center; }
+.overlay.open { display: flex; }
+.modal { background: #13162a; border: 1px solid #2a3060; border-radius: 12px; padding: 20px; width: 420px; max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+.modal-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.modal-head-left { display: flex; align-items: center; gap: 10px; }
+.modal-head-sprite { width: 60px; height: 60px; image-rendering: pixelated; }
+.modal-name { font-size: 17px; font-weight: 700; }
+.modal-close { background: none; border: none; color: #505878; cursor: pointer; font-size: 22px; line-height: 1; }
+.modal-close:hover { color: #a0b0d0; }
+.modal-row { display: flex; gap: 8px; margin-bottom: 6px; font-size: 12px; align-items: center; }
+.modal-key { color: #506080; width: 90px; flex-shrink: 0; }
+.modal-val { color: #c0d0e8; }
+.modal-select { background: #0a0c18; border: 1px solid #2a3060; border-radius: 4px; color: #c0d0e8; padding: 4px 6px; font-size: 11px; flex: 1; cursor: pointer; }
+.modal-select:focus { outline: none; border-color: #4a70e0; }
+.modal-stats { font-family: 'Consolas',monospace; font-size: 10px; color: #6878a0; margin: 8px 0; background: #0a0c18; padding: 8px; border-radius: 4px; }
+.modal-moves { display: flex; flex-direction: column; gap: 3px; margin: 6px 0; }
+.modal-move { background: #1a1e38; border-radius: 4px; padding: 5px 10px; font-size: 11px; color: #a0b8d8; }
+.modal-section { font-size: 10px; font-weight: 700; color: #4060a0; margin: 12px 0 6px; letter-spacing: 0.1em; border-top: 1px solid #1e2448; padding-top: 10px; }
+.modal-save { background: #2a50c0; border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 700; width: 100%; margin-top: 8px; transition: background 0.15s; }
+.modal-save:hover { background: #3a60d0; }
+.modal-raw-toggle { color: #404860; font-size: 10px; cursor: pointer; margin-top: 10px; user-select: none; }
+.modal-raw { font-family: 'Consolas',monospace; font-size: 10px; color: #506080; margin-top: 6px; white-space: pre-wrap; background: #0a0c18; padding: 8px; border-radius: 4px; display: none; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2a3060; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚔ ポケモンチャンピオンズ チームビルダー</h1>
+  <div class="tabs">
+    <button class="tab active" data-fmt="single" onclick="setFormat(this)">シングル (3/6)</button>
+    <button class="tab" data-fmt="double" onclick="setFormat(this)">ダブル (4/6)</button>
+  </div>
+  <div class="reg-badge">Regulation M-B</div>
+</header>
+
+<div class="layout">
+
+  <!-- チーム構成 -->
+  <div class="panel">
+    <div class="panel-title">
+      チーム構成
+      <button class="btn-dl" onclick="downloadTeam()">⬇ テキスト出力</button>
+    </div>
+    <div class="dup-warning" id="dupWarning" style="display:none"></div>
+    <div class="team-grid" id="teamGrid"></div>
+  </div>
+
+  <!-- タイプ相性 -->
+  <div class="panel">
+    <div class="panel-title">タイプ弱点チェック（攻撃タイプ → チームの被弾）</div>
+    <div class="type-chart-grid" id="typeChart">
+      <div class="chart-empty">チームにポケモンを追加すると表示されます</div>
+    </div>
+  </div>
+
+  <!-- 右パネル -->
+  <div class="panel import-panel">
+    <div class="panel-tabs">
+      <button class="ptab active" onclick="switchPTab('mine',this)">所持</button>
+      <button class="ptab" onclick="switchPTab('import',this)">インポート</button>
+    </div>
+
+    <!-- 所持タブ -->
+    <div id="tabMine" class="ptab-content">
+      <input type="text" id="mySearch" class="my-search" placeholder="名前で絞り込み..." oninput="renderMyPokemon()">
+      <div class="my-list" id="myList"><div class="my-empty">読み込み中...</div></div>
+    </div>
+
+    <!-- インポートタブ -->
+    <div id="tabImport" class="ptab-content" style="display:none">
+      <textarea class="import-textarea" id="importText"
+        placeholder="ポケモン @ アイテム&#10;テラスタイプ: XXX&#10;特性: XXX&#10;性格: XXX&#10;HP-Atk-Def-SpA-SpD-Spe&#10;技1 / 技2 / 技3 / 技4&#10;&#10;複数匹は空行で区切る"></textarea>
+      <div class="import-actions">
+        <label class="btn-upload">
+          📁 TXTから
+          <input type="file" accept=".txt" onchange="handleFileUpload(event)" style="display:none">
+        </label>
+        <button class="btn-parse" onclick="parseImport()">▶ 解析して追加</button>
+      </div>
+      <div class="pool-list" id="poolList">
+        <div class="pool-empty">解析した個体がここに並びます<br>クリックでチームに追加</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- モーダル -->
+<div class="overlay" id="overlay" onclick="handleOverlayClick(event)">
+  <div class="modal" id="modal">
+    <div class="modal-head">
+      <div class="modal-head-left">
+        <img id="mSprite" class="modal-head-sprite" src="" alt="" onerror="this.style.display='none'" style="display:none">
+        <div>
+          <div class="modal-name" id="mName"></div>
+          <div id="mTypes" style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap"></div>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-row"><span class="modal-key">持ち物</span><span class="modal-val" id="mItem"></span></div>
+    <div class="modal-row"><span class="modal-key">テラスタイプ</span><span class="modal-val" id="mTera"></span></div>
+    <div class="modal-row"><span class="modal-key">特性</span><span class="modal-val" id="mAbility"></span></div>
+    <div class="modal-row"><span class="modal-key">性格</span><span class="modal-val" id="mNature"></span></div>
+    <div class="modal-stats" id="mStats"></div>
+    <div class="modal-moves" id="mMoves"></div>
+    <!-- 編集セクション (チーム内の場合のみ表示) -->
+    <div id="editSection" style="display:none">
+      <div class="modal-section">✏ 編集</div>
+      <div class="modal-row"><span class="modal-key">持ち物</span><select class="modal-select" id="editItem"></select></div>
+      <div class="modal-row"><span class="modal-key">性格</span><select class="modal-select" id="editNature"></select></div>
+      <div class="modal-row"><span class="modal-key">技1</span><select class="modal-select" id="editMove0"></select></div>
+      <div class="modal-row"><span class="modal-key">技2</span><select class="modal-select" id="editMove1"></select></div>
+      <div class="modal-row"><span class="modal-key">技3</span><select class="modal-select" id="editMove2"></select></div>
+      <div class="modal-row"><span class="modal-key">技4</span><select class="modal-select" id="editMove3"></select></div>
+      <button class="modal-save" onclick="saveEdit()">保存してチームに反映</button>
+    </div>
+    <div class="modal-raw-toggle" onclick="toggleRaw()">▸ ポケソルテキスト表示</div>
+    <div class="modal-raw" id="mRaw"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  定数
+// ═══════════════════════════════════════════════
+
+const TYPE_COLORS = {
+  'ノーマル':'#9099a1','ほのお':'#e8723c','みず':'#4d90d5','でんき':'#f2c33b',
+  'くさ':'#5db85c','こおり':'#74cec0','かくとう':'#ce4069','どく':'#a95fc6',
+  'じめん':'#d97746','ひこう':'#8fa8dd','エスパー':'#f4607e','むし':'#90c12c',
+  'いわ':'#c6b138','ゴースト':'#546dac','ドラゴン':'#0a6dc4','あく':'#595761',
+  'はがね':'#5a8fa3','フェアリー':'#ec8fe6'
+}
+
+const TYPES = [
+  'ノーマル','ほのお','みず','でんき','くさ','こおり','かくとう','どく',
+  'じめん','ひこう','エスパー','むし','いわ','ゴースト','ドラゴン','あく','はがね','フェアリー'
+]
+
+const EFF = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,.5,0,1,1,.5,1],
+  [1,.5,.5,1,2,2,1,1,1,1,1,2,.5,1,.5,1,2,1],
+  [1,2,.5,1,.5,1,1,1,2,1,1,1,2,1,.5,1,1,1],
+  [1,1,2,.5,.5,1,1,1,0,2,1,1,1,1,.5,1,1,1],
+  [1,.5,2,1,.5,1,1,.5,2,.5,1,.5,2,1,.5,1,.5,1],
+  [1,.5,.5,1,2,.5,2,1,2,2,1,1,1,1,2,1,.5,1],
+  [2,1,1,1,1,2,1,.5,1,.5,.5,.5,2,0,1,2,2,.5],
+  [1,1,1,1,2,1,1,.5,.5,1,2,1,.5,1,1,1,0,2],
+  [1,2,1,2,.5,1,1,2,1,0,1,.5,2,1,1,1,2,1],
+  [1,1,1,.5,2,2,2,1,1,1,1,2,.5,1,1,1,.5,1],
+  [1,1,1,1,1,1,2,2,1,1,.5,1,1,1,1,0,.5,1],
+  [1,.5,1,1,2,1,.5,.5,1,.5,2,1,1,.5,1,2,.5,.5],
+  [1,2,1,1,1,2,.5,1,.5,2,1,2,1,1,1,1,.5,1],
+  [0,1,1,1,1,1,1,1,1,1,2,1,1,2,1,.5,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,.5,0],
+  [1,1,1,1,1,1,.5,1,1,1,2,.5,1,2,1,.5,1,.5],
+  [1,.5,.5,.5,1,2,1,1,1,1,.5,1,2,1,1,1,.5,2],
+  [1,.5,1,1,1,1,2,.5,1,1,1,1,1,1,2,2,.5,1],
+]
+
+const POKEMON_TYPES = {
+  'ゲンガー':['ゴースト','どく'],'メガゲンガー':['ゴースト','どく'],
+  'ガブリアス':['ドラゴン','じめん'],'メガガブリアス':['ドラゴン','じめん'],
+  'カイリュー':['ドラゴン','ひこう'],'メガカイリュー':['ドラゴン','ひこう'],
+  'リザードン':['ほのお','ひこう'],
+  'メガリザードンX':['ほのお','ドラゴン'],'メガリザードンY':['ほのお','ひこう'],
+  'ルカリオ':['かくとう','はがね'],'メガルカリオ':['かくとう','はがね'],
+  'キラフロル':['いわ','どく'],'メガキラフロル':['いわ','どく'],
+  'ピクシー':['フェアリー'],'メガピクシー':['フェアリー'],
+  'スコヴィラン':['くさ','ほのお'],'メガスコヴィラン':['くさ','ほのお'],
+  'ガルーラ':['ノーマル'],'メガガルーラ':['ノーマル'],
+  'バンギラス':['いわ','あく'],'メガバンギラス':['いわ','あく'],
+  'エルレイド':['かくとう','エスパー'],'メガエルレイド':['かくとう','エスパー'],
+  'フラエッテ':['フェアリー'],'メガフラエッテ':['フェアリー'],
+  'イダイトウ':['みず','ゴースト'],
+  'イルカマン':['みず'],
+  'アシレーヌ':['みず','フェアリー'],
+  'ブリジュラス':['ドラゴン','はがね'],
+  'ミミッキュ':['ゴースト','フェアリー'],
+  'ウルガモス':['ほのお','むし'],
+  'ウォッシュロトム':['みず','でんき'],'ヒートロトム':['ほのお','でんき'],
+  'ドラパルト':['ドラゴン','ゴースト'],
+  'ゲッコウガ':['みず','あく'],
+  'ニンフィア':['フェアリー'],
+  'ジャローダ':['くさ'],
+  'サザンドラ':['あく','ドラゴン'],
+  'ゾロアーク':['あく'],'ゾロアーク(ヒスイ)':['ノーマル','ゴースト'],
+  'ドリュウズ':['じめん','はがね'],
+  'ドドゲザン':['あく','はがね'],
+  'ギルガルド':['はがね','ゴースト'],
+  'マスカーニャ':['くさ','あく'],
+  'オオニューラ':['あく','かくとう'],
+  'カバルドン':['じめん'],
+  'ドヒドイデ':['どく','みず'],
+  'アーマーガア':['はがね','ひこう'],
+  'ブラッキー':['あく'],
+  'ラウドボーン':['ほのお','ゴースト'],
+  'クエスパトラ':['エスパー'],
+  'ワルビアル':['じめん','あく'],
+  'エルフーン':['くさ','フェアリー'],
+  'アブソル':['あく'],'メガアブソル':['あく'],
+  'ニャオニクス':['エスパー'],
+  'メタモン':['ノーマル'],
+  'オニシズクモ':['みず','むし'],
+  'ユキメノコ':['こおり','ゴースト'],
+  'ケケンカニ':['みず','かくとう'],'メガケケンカニ':['みず','かくとう'],
+  'カラミンゴ':['ほのお','ひこう'],
+  'メタグロス':['はがね','エスパー'],
+  'ムクホーク':['ノーマル','ひこう'],'メガムクホーク':['ノーマル','ひこう'],
+  'アンニポン':['かくとう','ゴースト'],
+  'テツノカシラ':['はがね','ドラゴン'],
+}
+
+// ポケAPI スプライトID
+const SPRITE_IDS = {
+  'ゲンガー':94,'メガゲンガー':10036,
+  'カイリュー':149,'メガカイリュー':149,
+  'リザードン':6,'メガリザードンX':10034,'メガリザードンY':10035,
+  'ルカリオ':448,'メガルカリオ':10076,
+  'キラフロル':970,'メガキラフロル':970,
+  'ピクシー':36,'メガピクシー':36,
+  'スコヴィラン':957,'メガスコヴィラン':957,
+  'ガルーラ':115,'メガガルーラ':10044,
+  'バンギラス':248,'メガバンギラス':10073,
+  'エルレイド':475,'メガエルレイド':10079,
+  'フラエッテ':670,'メガフラエッテ':670,
+  'アブソル':359,'メガアブソル':10057,
+  'ガブリアス':445,'ミミッキュ':778,'オオニューラ':903,
+  'マスカーニャ':908,'イダイトウ':902,'ドラパルト':887,
+  'ドリュウズ':530,'ドドゲザン':983,'ギルガルド':681,
+  'イルカマン':964,'ウルガモス':637,'ブリジュラス':998,
+  'ウォッシュロトム':10010,'ヒートロトム':10011,
+  'ゲッコウガ':658,'ニンフィア':700,'アシレーヌ':730,
+  'クエスパトラ':956,'ジャローダ':497,'サザンドラ':635,
+  'ゾロアーク':571,'ゾロアーク(ヒスイ)':10186,
+  'カバルドン':450,'ドヒドイデ':748,'アーマーガア':879,
+  'ブラッキー':197,'ラウドボーン':911,'メタモン':132,
+  'ワルビアル':553,'ニャオニクス':678,'エルフーン':547,
+  'オニシズクモ':752,'アンニポン':979,
+}
+
+const ALL_NATURES = [
+  'がんばりや','さみしがり','ゆうかん','いじっぱり','やんちゃ',
+  'ずぶとい','すなお','のんき','わんぱく','いかりっぽい',
+  'ひかえめ','どんかん','れいせい','おっとり','うっかりや',
+  'おだやか','おとなしい','しんちょう','なまいき','きまぐれ',
+  'ようき','むじゃき','はりきり','せっかち','おくびょう'
+]
+
+// ═══════════════════════════════════════════════
+//  所持ポケモンデータ (pokemon/*.md から)
+// ═══════════════════════════════════════════════
+
+const OWNED_MD_TEXT = `
+メガゲンガー @ ゲンガナイト
+テラスタイプ: ゴースト
+特性: のろわれボディ
+性格: おくびょう
+137(16)-63-100-222(252)-115-200(252)
+シャドーボール / ヘドロウェーブ / みちづれ / みがわり
+
+メガゲンガー @ ゲンガナイト
+テラスタイプ: ゴースト
+特性: のろわれボディ
+性格: おくびょう
+137(16)-63-100-222(252)-115-200(252)
+シャドーボール / ヘドロウェーブ / みちづれ / ちょうはつ
+
+メガカイリュー @ カイリュナイト
+テラスタイプ: ドラゴン
+特性: マルチスケイル
+性格: おくびょう
+168(16)-115-115-216(252)-120-154(252)
+かえんほうしゃ / れいとうビーム / 10まんボルト / はねやすめ
+
+メガリザードンY @ リザードナイトY
+テラスタイプ: ほのお
+特性: ひでり
+性格: おくびょう
+153-98-98-211(252)-137(16)-167(252)
+ウェザーボール / ソーラービーム / りゅうのはどう / みがわり
+
+メガリザードンX @ リザードナイトX
+テラスタイプ: ほのお
+特性: かたいツメ
+性格: いじっぱり
+153-200(252)-133(16)-135-105-152(252)
+フレアドライブ / げきりん / かみなりパンチ / りゅうのまい
+
+メガルカリオ @ ルカリオナイト
+テラスタイプ: かくとう
+特性: てきおうりょく
+性格: ようき
+145-197(252)-110(16)-144-90-180(252)
+インファイト / バレットパンチ / じしん / つるぎのまい
+
+メガルカリオ @ ルカリオナイト
+テラスタイプ: かくとう
+特性: てきおうりょく
+性格: むじゃき
+145-197(252)-110(16)-160-81-180(252)
+インファイト / ラスターカノン / バレットパンチ / あくのはどう
+
+メガキラフロル @ キラフロルナイト
+テラスタイプ: どく
+特性: てきおうりょく
+性格: おくびょう
+158-85-127(16)-202(252)-116-168(252)
+パワージェム / ヘドロウェーブ / だいちのちから / エナジーボール
+
+メガピクシー @ ピクシナイト
+テラスタイプ: フェアリー
+特性: マジックミラー
+性格: ずぶとい
+202(252)-76-159(252)-155-130-92(16)
+ムーンフォース / アシストパワー / コスモパワー / つきのひかり
+
+メガピクシー @ ピクシナイト
+テラスタイプ: フェアリー
+特性: マジックミラー
+性格: ずぶとい
+202(252)-76-159(252)-155-130-92(16)
+アシストパワー / コスモパワー / つきのひかり / バトンタッチ
+
+メガスコヴィラン @ スコヴィラナイト
+テラスタイプ: くさ
+特性: ふみん
+性格: いじっぱり
+143(16)-176(252)-85-115-85-127(252)
+くさわけ / フレアドライブ / じだんだ / がむしゃら
+
+メガスコヴィラン @ スコヴィラナイト
+テラスタイプ: くさ
+特性: ふみん
+性格: ようき
+143(16)-160(252)-85-115-85-139(252)
+くさわけ / フレアドライブ / じだんだ / がむしゃら
+
+メガガルーラ @ ガルーラナイト
+テラスタイプ: ノーマル
+特性: きもったま
+性格: いじっぱり
+182(16)-194(252)-120-72-120-152(252)
+ねこだまし / とっておき / - / -
+
+メガバンギラス @ バンギラスナイト
+テラスタイプ: いわ
+特性: すなおこし
+性格: いじっぱり
+207(252)-221(134)-170-103-140-108(134)
+いわなだれ / はたきおとす / じしん / まもる
+
+メガエルレイド @ エルレイドナイト
+テラスタイプ: かくとう
+特性: せいぎのこころ
+性格: ようき
+175(252)-187(16)-115-76-135-178(252)
+ドレインパンチ / じしん / いわなだれ / まもる
+
+メガフラエッテ @ フラエッテナイト
+テラスタイプ: フェアリー
+特性: フラワーベール
+性格: おくびょう
+151(16)-76-87-177(252)-148-158(252)
+ムーンフォース / ドレインキッス / はめつのひかり / めいそう
+
+カイリュー @ ラムのみ
+テラスタイプ: ドラゴン
+特性: マルチスケイル
+性格: いじっぱり
+198(252)-169-115-136(252)-120-102(16)
+げきりん / じしん / しんそく / りゅうのまい
+
+カイリュー @ こだわりハチマキ
+テラスタイプ: ドラゴン
+特性: マルチスケイル
+性格: ようき
+198(252)-154-115-136(252)-120-112(16)
+げきりん / じしん / しんそく / りゅうのまい
+
+ガブリアス @ きあいのタスキ
+テラスタイプ: じめん
+特性: さめはだ
+性格: ようき
+183-182(252)-117(16)-90-105-169(252)
+げきりん / じしん / がんせきふうじ / つるぎのまい
+
+ミミッキュ @ ラムのみ
+テラスタイプ: フェアリー
+特性: ばけのかわ
+性格: いじっぱり
+130-156(252)-100-63-127(16)-148(252)
+シャドークロー / じゃれつく / かげうち / つるぎのまい
+
+オオニューラ @ きあいのタスキ
+テラスタイプ: かくとう
+特性: かるわざ
+性格: いじっぱり
+155-200(252)-80-54-102(16)-172(252)
+フェイタルクロー / インファイト / いわなだれ / ねこだまし
+
+マスカーニャ @ こだわりスカーフ
+テラスタイプ: くさ
+特性: へんげんじざい
+性格: いじっぱり
+151-178(252)-92(16)-90-90-175(252)
+トリックフラワー / はたきおとす / トリプルアクセル / とんぼがえり
+
+マスカーニャ @ きあいのタスキ
+テラスタイプ: くさ
+特性: へんげんじざい
+性格: ようき
+151-162(252)-92(16)-90-90-192(252)
+トリックフラワー / はたきおとす / トリプルアクセル / とんぼがえり
+
+イダイトウ @ こだわりスカーフ
+テラスタイプ: みず
+特性: てきおうりょく
+性格: いじっぱり
+195-180(252)-85-90-97(16)-130(252)
+ウェーブタックル / おはかまいり / クイックターン / アクアジェット
+
+ドラパルト @ きあいのタスキ
+テラスタイプ: ドラゴン
+特性: クリアボディ
+性格: いじっぱり
+163-189(252)-97(16)-108-95-194(252)
+ドラゴンアロー / とんぼがえり / ふいうち / りゅうのまい
+
+ドリュウズ @ きあいのタスキ
+テラスタイプ: じめん
+特性: すなかき
+性格: いじっぱり
+185-205(252)-80-63-87(16)-140(252)
+じしん / アイアンヘッド / いわなだれ / つるぎのまい
+
+ドドゲザン @ くろいメガネ
+テラスタイプ: あく
+特性: そうだいしょう
+性格: いじっぱり
+207(252)-205(252)-140-72-105-72(16)
+ドゲザン / ふいうち / アイアンヘッド / つるぎのまい
+
+ギルガルド @ オボンのみ
+テラスタイプ: ゴースト
+特性: バトルスイッチ
+性格: ゆうかん
+167(252)-112(252)-162(16)-70-161-72
+ポルターガイスト / アイアンヘッド / インファイト / かげうち
+
+イルカマン @ こだわりスカーフ
+テラスタイプ: みず
+特性: マイティチェンジ
+性格: いじっぱり
+177(16)-134(252)-92-66-107-152(252)
+ウェーブタックル / れいとうパンチ / インファイト / クイックターン
+
+ゲンガー @ きあいのタスキ
+テラスタイプ: ゴースト
+特性: のろわれボディ
+性格: おくびょう
+137(16)-63-100-222(252)-115-200(252)
+シャドーボール / ヘドロウェーブ / みちづれ / みがわり
+
+ゲンガー @ きあいのタスキ
+テラスタイプ: ゴースト
+特性: のろわれボディ
+性格: おくびょう
+137(16)-63-100-222(252)-115-200(252)
+シャドーボール / ヘドロウェーブ / みちづれ / ちょうはつ
+
+ウルガモス @ ラムのみ
+テラスタイプ: ほのお
+特性: ほのおのからだ
+性格: ひかえめ
+160-58-85-205(252)-127(16)-152(252)
+ほのおのまい / むしのさざめき / ギガドレイン / ちょうのまい
+
+ブリジュラス @ オボンのみ
+テラスタイプ: はがね
+特性: じきゅうりょく
+性格: ひかえめ
+197(252)-99-150-194(252)-85-107(16)
+ラスターカノン / りゅうせいぐん / 10まんボルト / はどうだん
+
+ブリジュラス @ こだわりスカーフ
+テラスタイプ: はがね
+特性: じきゅうりょく
+性格: ひかえめ
+168(16)-99-150-194(252)-85-137(252)
+ラスターカノン / りゅうせいぐん / 10まんボルト / はどうだん
+
+ウォッシュロトム @ こだわりスカーフ
+テラスタイプ: みず
+特性: ふゆう
+性格: ひかえめ
+125-63-129(16)-172(252)-127-138(252)
+ハイドロポンプ / ボルトチェンジ / 10まんボルト / トリック
+
+ヒートロトム @ こだわりスカーフ
+テラスタイプ: ほのお
+特性: ふゆう
+性格: ひかえめ
+125-63-129(16)-172(252)-127-138(252)
+オーバーヒート / 10まんボルト / ボルトチェンジ / トリック
+
+ヒートロトム @ オボンのみ
+テラスタイプ: ほのお
+特性: ふゆう
+性格: ひかえめ
+157(252)-63-129(16)-172(252)-127-106
+オーバーヒート / 10まんボルト / ボルトチェンジ / おにび
+
+キラフロル @ こだわりスカーフ
+テラスタイプ: どく
+特性: どくげしょう
+性格: ひかえめ
+158-54-112(16)-200(252)-101-138(252)
+パワージェム / ヘドロウェーブ / だいちのちから / エナジーボール
+
+キラフロル @ オボンのみ
+テラスタイプ: どく
+特性: どくげしょう
+性格: ひかえめ
+190(252)-54-110-200(252)-101-108(16)
+パワージェム / ヘドロウェーブ / だいちのちから / エナジーボール
+
+ドラパルト @ きあいのタスキ
+テラスタイプ: ドラゴン
+特性: すりぬけ
+性格: ひかえめ
+163-126-97(16)-167(252)-95-194(252)
+りゅうせいぐん / シャドーボール / かえんほうしゃ / とんぼがえり
+
+ゲッコウガ @ きあいのタスキ
+テラスタイプ: みず
+特性: へんげんじざい
+性格: おくびょう
+147-103-87-155(252)-93(16)-191(252)
+なみのり / れいとうビーム / ヘドロウェーブ / とんぼがえり
+
+ニンフィア @ たべのこし
+テラスタイプ: フェアリー
+特性: フェアリースキン
+性格: ひかえめ
+202(252)-63-85-178(252)-150-82(16)
+ハイパーボイス / めいそう / あくび / みがわり
+
+ニンフィア @ オボンのみ
+テラスタイプ: フェアリー
+特性: フェアリースキン
+性格: ひかえめ
+202(252)-76-85-178(252)-150-82(16)
+ハイパーボイス / マジカルフレイム / あくび / でんこうせっか
+
+アシレーヌ @ オボンのみ
+テラスタイプ: フェアリー
+特性: げきりゅう
+性格: ひかえめ
+187(252)-84-94-195(252)-138(16)-80
+うたかたのアリア / ムーンフォース / アクアジェット / アンコール
+
+アシレーヌ @ オボンのみ
+テラスタイプ: フェアリー
+特性: げきりゅう
+性格: ひかえめ
+187(252)-84-94-195(252)-138(16)-80
+うたかたのアリア / ムーンフォース / クイックターン / アクアジェット
+
+クエスパトラ @ オボンのみ
+テラスタイプ: エスパー
+特性: かそく
+性格: おくびょう
+170-58-82(16)-153(252)-80-172(252)
+ルナコリジョン / マジカルシャイン / めいそう / みがわり
+
+ジャローダ @ たべのこし
+テラスタイプ: くさ
+特性: あまのじゃく
+性格: おくびょう
+150-72-117(16)-127(252)-115-181(252)
+リーフストーム / ギガドレイン / みがわり / ちょうはつ
+
+ジャローダ @ メンタルハーブ
+テラスタイプ: くさ
+特性: あまのじゃく
+性格: ひかえめ
+150-72-117(16)-139(252)-115-165(252)
+リーフストーム / ギガドレイン / みがわり / ちょうはつ
+
+サザンドラ @ こだわりスカーフ
+テラスタイプ: あく
+特性: ふゆう
+性格: ひかえめ
+169(16)-112-110-194(252)-110-150(252)
+あくのはどう / りゅうのはどう / かえんほうしゃ / とんぼがえり
+
+ゾロアーク(ヒスイ) @ きあいのタスキ
+テラスタイプ: ゴースト
+特性: イリュージョン
+性格: おくびょう
+132(16)-94-80-177(252)-80-178(252)
+ハイパーボイス / うらみつらみ / かえんほうしゃ / ヘドロばくだん
+
+ブリジュラス @ オボンのみ
+テラスタイプ: はがね
+特性: じきゅうりょく
+性格: おだやか
+197(252)-99-150-145-128(252)-107(16)
+ステルスロック / ラスターカノン / りゅうせいぐん / 10まんボルト
+
+ブリジュラス @ たべのこし
+テラスタイプ: はがね
+特性: じきゅうりょく
+性格: おだやか
+197(252)-99-150-145-128(252)-107(16)
+ラスターカノン / ミラーコート / ステルスロック / ほえる
+
+ウォッシュロトム @ オボンのみ
+テラスタイプ: みず
+特性: ふゆう
+性格: ずぶとい
+157(252)-63-174(252)-125-129(16)-106
+ハイドロポンプ / ボルトチェンジ / 10まんボルト / おにび
+
+カバルドン @ オボンのみ
+テラスタイプ: じめん
+特性: すなおこし
+性格: わんぱく
+215(252)-132-187(252)-79-92-69(16)
+じしん / ステルスロック / あくび / ふきとばし
+
+カバルドン @ オボンのみ
+テラスタイプ: じめん
+特性: すなおこし
+性格: わんぱく
+215(252)-132-187(252)-79-92-69(16)
+じしん / ステルスロック / あくび / なまける
+
+カバルドン @ たべのこし
+テラスタイプ: じめん
+特性: すなおこし
+性格: わんぱく
+215(252)-132-187(252)-79-92-69(16)
+じしん / ステルスロック / あくび / なまける
+
+ドヒドイデ @ たべのこし
+テラスタイプ: どく
+特性: さいせいりょく
+性格: ずぶとい
+157(252)-61-224(252)-73-162-57(16)
+どくどく / まとわりつく / じこさいせい / くろいきり
+
+アーマーガア @ オボンのみ
+テラスタイプ: ひこう
+特性: プレッシャー
+性格: わんぱく
+205(252)-107-172(252)-65-107(16)-87
+ボディプレス / とんぼがえり / てっぺき / ちょうはつ
+
+アーマーガア @ たべのこし
+テラスタイプ: ひこう
+特性: プレッシャー
+性格: わんぱく
+205(252)-107-172(252)-65-105-89(16)
+ボディプレス / てっぺき / はねやすめ / ちょうはつ
+
+ブラッキー @ オボンのみ
+テラスタイプ: あく
+特性: シンクロ
+性格: ずぶとい
+202(252)-63-178(252)-80-150-87(16)
+イカサマ / まもる / ねがいごと / あくび
+
+アシレーヌ @ たべのこし
+テラスタイプ: フェアリー
+特性: げきりゅう
+性格: ずぶとい
+187(252)-71-138(252)-146-136-82(16)
+うたかたのアリア / ムーンフォース / クイックターン / アンコール
+
+アシレーヌ @ たべのこし
+テラスタイプ: フェアリー
+特性: げきりゅう
+性格: ずぶとい
+187(252)-71-138(252)-146-136-82(16)
+うたかたのアリア / ムーンフォース / めいそう / アンコール
+
+ラウドボーン @ オボンのみ
+テラスタイプ: ほのお
+特性: てんねん
+性格: ずぶとい
+211(252)-72-167(252)-130-95-88(16)
+フレアソング / シャドーボール / あくび / なまける
+
+クエスパトラ @ たべのこし
+テラスタイプ: エスパー
+特性: かそく
+性格: おくびょう
+202(252)-58-82(16)-121-80-172(252)
+ルナコリジョン / マジカルシャイン / めいそう / みがわり
+
+ガブリアス @ きあいのタスキ
+テラスタイプ: じめん
+特性: さめはだ
+性格: ようき
+183-182(252)-117(16)-90-105-169(252)
+ステルスロック / じしん / がんせきふうじ / つるぎのまい
+
+ガブリアス @ きあいのタスキ
+テラスタイプ: じめん
+特性: さめはだ
+性格: ようき
+183-182(252)-117(16)-90-105-169(252)
+ステルスロック / げきりん / じしん / がんせきふうじ
+
+キラフロル @ きあいのタスキ
+テラスタイプ: どく
+特性: どくげしょう
+性格: ひかえめ
+158-54-112(16)-200(252)-101-138(252)
+ステルスロック / パワージェム / ヘドロウェーブ / だいちのちから
+
+ドラパルト @ きあいのタスキ
+テラスタイプ: ドラゴン
+特性: クリアボディ
+性格: いじっぱり
+195(252)-189(252)-97(16)-108-95-162
+ドラゴンアロー / とんぼがえり / りゅうのまい / バトンタッチ
+
+クエスパトラ @ オボンのみ
+テラスタイプ: エスパー
+特性: かそく
+性格: ずぶとい
+202(252)-58-123(252)-121-80-127(16)
+ルナコリジョン / めいそう / みがわり / バトンタッチ
+
+クエスパトラ @ きあいのタスキ
+テラスタイプ: エスパー
+特性: かそく
+性格: おくびょう
+170-58-82(16)-153(252)-80-172(252)
+ルナコリジョン / めいそう / まもる / バトンタッチ
+
+オニシズクモ @ オボンのみ
+テラスタイプ: みず
+特性: すいほう
+性格: いじっぱり
+175(252)-134(252)-112-63-152-64(16)
+ねばねばネット / アクアブレイク / きゅうけつ / ミラーコート
+
+オニシズクモ @ オボンのみ
+テラスタイプ: みず
+特性: すいほう
+性格: いじっぱり
+175(252)-134(252)-112-63-152-64(16)
+ねばねばネット / アクアブレイク / とびかかる / ミラーコート
+
+メタモン @ こだわりスカーフ
+テラスタイプ: ノーマル
+特性: かわりもの
+性格: がんばりや
+155(252)-68-100(252)-68-70(16)-68
+へんしん
+
+ワルビアル @ たべのこし
+テラスタイプ: じめん
+特性: いかりのつぼ
+性格: いじっぱり
+202(252)-185(252)-102(16)-76-90-112
+じしん / ワイドブレイカー / つけあがる / まもる
+
+アブソル @ ピントレンズ
+テラスタイプ: あく
+特性: きょううん
+性格: おくびょう
+172(252)-135-82(16)-95-80-139(252)
+フェイント / つじぎり / シャドークロー / ちょうはつ
+
+アブソル @ こだわりスカーフ
+テラスタイプ: あく
+特性: せいぎのこころ
+性格: いじっぱり
+147(56)-200(252)-82-95-80-127(216)
+はたきおとす / インファイト / じゃれつく / バトンタッチ
+
+ニャオニクス @ メンタルハーブ
+テラスタイプ: エスパー
+特性: いたずらごころ
+性格: わんぱく
+181(252)-68-133(252)-92-103(16)-124
+ねこだまし / じこあんじ / バトンタッチ / まもる
+
+ニャオニクス @ メンタルハーブ
+テラスタイプ: エスパー
+特性: いたずらごころ
+性格: わんぱく
+181(252)-68-140(252)-92-103(16)-124
+じゅうりょく / なりきり / まもる / みがわり
+
+エルフーン @ きあいのタスキ
+テラスタイプ: くさ
+特性: いたずらごころ
+性格: おくびょう
+167(252)-78-107(16)-97-95-184(252)
+ふくろだたき / おいかぜ / アンコール / まもる
+
+ゾロアーク(ヒスイ) @ きあいのタスキ
+テラスタイプ: ゴースト
+特性: イリュージョン
+性格: ようき
+162(252)-122(16)-80-135-80-172(252)
+かげうち / のしかかり / じこあんじ / まもる
+
+ゾロアーク(ヒスイ) @ きあいのタスキ
+テラスタイプ: ゴースト
+特性: イリュージョン
+性格: ようき
+132(16)-120-80-159(252)-80-172(252)
+ハイパーボイス / うらみつらみ / しっとのほのお / まもる
+
+ガブリアス @ オボンのみ
+テラスタイプ: じめん
+特性: さめはだ
+性格: ようき
+215(252)-152(16)-115-90-105-169(252)
+じしん / ワイドブレイカー / いわなだれ / まもる
+
+メガゲンガー @ ゲンガナイト
+テラスタイプ: ゴースト
+特性: のろわれボディ
+性格: おくびょう
+167(252)-76-100-190-117(16)-200(252)
+たたりめ / ほろびのうた / さいみんじゅつ / まもる
+
+ブリジュラス @ オボンのみ
+テラスタイプ: はがね
+特性: じきゅうりょく
+性格: おだやか
+197(252)-99-150-145-128(252)-107(16)
+ラスターカノン / りゅうのはどう / 10まんボルト / まもる
+`
+
+// ═══════════════════════════════════════════════
+//  状態
+// ═══════════════════════════════════════════════
+
+let currentFormat = 'single'
+let teamSlots = Array(6).fill(null)
+let pool = []
+let myPokemon = []
+let editSlotIdx = -1
+
+// ═══════════════════════════════════════════════
+//  パーサー
+// ═══════════════════════════════════════════════
+
+function parsePokeSol(text) {
+  const blocks = text.trim().split(/\n[ \t]*\n+/)
+  const result = []
+  for (const block of blocks) {
+    const raw = block.trim()
+    if (!raw) continue
+    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean)
+    if (lines.length < 1) continue
+    const firstLine = lines[0]
+    if (firstLine.startsWith('#') || firstLine.startsWith('>') || firstLine.startsWith('-')) continue
+    const atIdx = firstLine.indexOf('@')
+    const name = (atIdx >= 0 ? firstLine.slice(0, atIdx) : firstLine).trim()
+    if (!name || name.startsWith('#') || name.startsWith('>')) continue
+    const item = (atIdx >= 0 ? firstLine.slice(atIdx + 1) : '').trim()
+    const poke = { name, item, teraType:'', ability:'', nature:'', stats:'', moves:[], raw }
+    for (const ln of lines.slice(1)) {
+      if (ln.startsWith('テラスタイプ:'))      poke.teraType = ln.slice(8).trim()
+      else if (ln.startsWith('特性:'))          poke.ability  = ln.slice(3).trim()
+      else if (ln.startsWith('性格:'))          poke.nature   = ln.slice(3).trim()
+      else if (/^\d/.test(ln))                  poke.stats    = ln
+      else if (ln.includes('/'))                poke.moves    = ln.split('/').map(m => m.trim()).filter(m => m && m !== '-')
+    }
+    result.push(poke)
+  }
+  return result
+}
+
+// ═══════════════════════════════════════════════
+//  スプライト
+// ═══════════════════════════════════════════════
+
+function getSpriteUrl(name) {
+  const id = SPRITE_IDS[name]
+  if (!id) return null
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`
+}
+
+function spriteImg(name, cls, size) {
+  const url = getSpriteUrl(name)
+  if (!url) return `<div class="${cls}" style="font-size:${size*0.45}px;display:flex;align-items:center;justify-content:center;width:${size}px;height:${size}px">🎮</div>`
+  return `<img class="${cls}" src="${url}" width="${size}" height="${size}" alt="${name}" onerror="this.parentNode&&(this.style.display='none')">`
+}
+
+// ═══════════════════════════════════════════════
+//  タイプ
+// ═══════════════════════════════════════════════
+
+function getTypes(name) {
+  if (POKEMON_TYPES[name]) return POKEMON_TYPES[name]
+  const keys = Object.keys(POKEMON_TYPES)
+  const hit = keys.find(k => name.startsWith(k) || k.startsWith(name.replace(/（.*）/,'')))
+  return hit ? POKEMON_TYPES[hit] : []
+}
+
+// ═══════════════════════════════════════════════
+//  タイプ相性
+// ═══════════════════════════════════════════════
+
+function calcWeakness() {
+  const members = teamSlots.filter(Boolean)
+  if (!members.length) return null
+  return TYPES.map((atkType, ai) => {
+    const counts = { x4:0, x2:0, half:0, x0:0 }
+    for (const poke of members) {
+      const dts = getTypes(poke.name)
+      if (!dts.length) continue
+      let m = 1
+      for (const dt of dts) { const di = TYPES.indexOf(dt); if (di>=0) m *= EFF[ai][di] }
+      if      (m >= 4) counts.x4++
+      else if (m >= 2) counts.x2++
+      else if (m <= 0) counts.x0++
+      else if (m < 1)  counts.half++
+    }
+    return { type: atkType, ...counts }
+  })
+}
+
+// ═══════════════════════════════════════════════
+//  重複チェック
+// ═══════════════════════════════════════════════
+
+function getDuplicates() {
+  const members = teamSlots.map((p,i) => p ? {p,i} : null).filter(Boolean)
+  const dupPokeIdx = new Set()
+  const dupItemIdx = new Set()
+  const nameCounts = {}, itemCounts = {}
+  for (const {p, i} of members) {
+    nameCounts[p.name] = (nameCounts[p.name]||[])
+    nameCounts[p.name].push(i)
+    if (p.item) {
+      itemCounts[p.item] = (itemCounts[p.item]||[])
+      itemCounts[p.item].push(i)
+    }
+  }
+  const dupPokeNames = [], dupItemNames = []
+  for (const [name, idxs] of Object.entries(nameCounts)) {
+    if (idxs.length > 1) { idxs.forEach(i => dupPokeIdx.add(i)); dupPokeNames.push(name) }
+  }
+  for (const [item, idxs] of Object.entries(itemCounts)) {
+    if (idxs.length > 1) { idxs.forEach(i => dupItemIdx.add(i)); dupItemNames.push(item) }
+  }
+  return { dupPokeIdx, dupItemIdx, dupPokeNames, dupItemNames }
+}
+
+// ═══════════════════════════════════════════════
+//  採用率ソート
+// ═══════════════════════════════════════════════
+
+function getVariantOptions(pokeName) {
+  const variants = myPokemon.filter(p => p.name === pokeName)
+  const itemFreq = {}, natureFreq = {}, moveFreq = {}
+  for (const v of variants) {
+    if (v.item) itemFreq[v.item] = (itemFreq[v.item]||0)+1
+    if (v.nature) natureFreq[v.nature] = (natureFreq[v.nature]||0)+1
+    for (const m of v.moves) if (m) moveFreq[m] = (moveFreq[m]||0)+1
+  }
+  const sortFreq = obj => Object.entries(obj).sort((a,b)=>b[1]-a[1]).map(e=>e[0])
+  const sortedNatures = sortFreq(natureFreq)
+  const allNaturesSorted = [...sortedNatures, ...ALL_NATURES.filter(n => !sortedNatures.includes(n))]
+  return {
+    items: sortFreq(itemFreq),
+    natures: allNaturesSorted,
+    moves: sortFreq(moveFreq)
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  レンダリング
+// ═══════════════════════════════════════════════
+
+function render() {
+  renderTeam()
+  renderTypeChart()
+  renderPool()
+  renderMyPokemon()
+}
+
+function renderTeam() {
+  const { dupPokeIdx, dupItemIdx, dupPokeNames, dupItemNames } = getDuplicates()
+  const warnEl = document.getElementById('dupWarning')
+  const msgs = []
+  if (dupPokeNames.length) msgs.push(`⚠ 同じポケモン: ${dupPokeNames.join(', ')}`)
+  if (dupItemNames.length) msgs.push(`⚠ 同じ持ち物: ${dupItemNames.join(', ')}`)
+  if (msgs.length) { warnEl.style.display=''; warnEl.innerHTML = msgs.join('<br>') }
+  else { warnEl.style.display='none' }
+
+  const grid = document.getElementById('teamGrid')
+  grid.innerHTML = ''
+  for (let i = 0; i < 6; i++) {
+    const poke = teamSlots[i]
+    const el = document.createElement('div')
+    let cls = 'slot'
+    if (poke) {
+      cls += ' filled'
+      if (dupPokeIdx.has(i)) cls += ' dup-poke'
+      if (dupItemIdx.has(i)) cls += ' dup-item'
+    }
+    el.className = cls
+    if (poke) {
+      const types = getTypes(poke.name)
+      const badges = types.map(t =>
+        `<span class="type-badge" style="background:${TYPE_COLORS[t]||'#555'}">${t}</span>`
+      ).join('')
+      const spriteUrl = getSpriteUrl(poke.name)
+      const spriteHtml = spriteUrl
+        ? `<img class="poke-sprite" src="${spriteUrl}" alt="${poke.name}" onerror="this.style.display='none'">`
+        : `<div class="poke-sprite-placeholder">🎮</div>`
+      el.innerHTML = `
+        <div class="poke-card">
+          ${spriteHtml}
+          <button class="btn-remove" onclick="removeSlot(${i})" title="削除">×</button>
+          <div class="poke-name" onclick="openEditModal(${i})">${poke.name}</div>
+          <div class="poke-item">@ ${poke.item||'—'}</div>
+          <div class="poke-types">${badges}</div>
+          <div class="poke-moves">${poke.moves.join(' / ')||'—'}</div>
+          <div class="poke-nature">${poke.nature||''}${poke.ability?' · '+poke.ability:''}</div>
+          <button class="btn-edit" onclick="openEditModal(${i})">✏ 編集</button>
+        </div>
+      `
+    } else {
+      const label = currentFormat==='single'
+        ? (i<3 ? `選出 ${i+1}` : `控え ${i-2}`)
+        : (i<4 ? `選出 ${i+1}` : `控え ${i-3}`)
+      el.innerHTML = `
+        <div class="slot-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+          </svg>
+          <span>${label}</span>
+        </div>
+      `
+      el.addEventListener('click', () => highlightPool())
+    }
+    grid.appendChild(el)
+  }
+}
+
+function renderTypeChart() {
+  const el = document.getElementById('typeChart')
+  const w = calcWeakness()
+  if (!w) { el.innerHTML = '<div class="chart-empty">チームにポケモンを追加すると<br>タイプ相性が表示されます</div>'; return }
+  el.innerHTML = w.map(row => {
+    const dots = [
+      ...Array(row.x4).fill(`<div class="wd wd-4" title="4倍弱点">4</div>`),
+      ...Array(row.x2).fill(`<div class="wd wd-2" title="2倍弱点">2</div>`),
+      ...Array(row.half).fill(`<div class="wd wd-h" title="半減">½</div>`),
+      ...Array(row.x0).fill(`<div class="wd wd-0" title="無効">✕</div>`),
+    ].join('')
+    return `<div class="type-row">
+      <span class="type-label" style="background:${TYPE_COLORS[row.type]||'#555'}">${row.type}</span>
+      <div class="weakness-dots">${dots}</div>
+    </div>`
+  }).join('')
+}
+
+function renderPool() {
+  const el = document.getElementById('poolList')
+  if (!pool.length) { el.innerHTML = '<div class="pool-empty">解析した個体がここに並びます<br>クリックでチームに追加</div>'; return }
+  el.innerHTML = pool.map((p, i) => {
+    const inTeam = teamSlots.some(s => s && s.raw === p.raw)
+    const spriteUrl = getSpriteUrl(p.name)
+    const spriteHtml = spriteUrl
+      ? `<img class="pool-sprite" src="${spriteUrl}" alt="" onerror="this.style.display='none'">`
+      : `<div class="pool-sprite" style="font-size:18px;display:flex;align-items:center;justify-content:center">🎮</div>`
+    return `
+      <div class="pool-item${inTeam?' in-team':''}" onclick="${inTeam?'':'addToTeam('+i+')'}" title="${inTeam?'チームに追加済み':'クリックでチームに追加'}">
+        ${spriteHtml}
+        <div class="pool-item-info">
+          <div class="pool-item-name">${p.name}${inTeam?'<span class="pool-check">✓</span>':''}</div>
+          <div class="pool-item-sub">@ ${p.item||'—'} ／ ${p.nature||'—'}</div>
+          <div class="pool-item-sub" style="color:#3a4060">${p.moves.join(' / ')||''}</div>
+        </div>
+      </div>`
+  }).join('')
+}
+
+function renderMyPokemon() {
+  const el = document.getElementById('myList')
+  const q = (document.getElementById('mySearch').value||'').toLowerCase()
+  const filtered = myPokemon.filter(p => !q || p.name.includes(q))
+  if (!filtered.length) { el.innerHTML = `<div class="my-empty">${q?'該当なし':'所持ポケモンなし'}</div>`; return }
+
+  // グループ化
+  const groups = {}
+  for (const p of filtered) {
+    if (!groups[p.name]) groups[p.name] = []
+    groups[p.name].push(p)
+  }
+
+  let html = ''
+  for (const [name, variants] of Object.entries(groups)) {
+    const spriteUrl = getSpriteUrl(name)
+    const spriteHtml = spriteUrl
+      ? `<img class="my-group-sprite" src="${spriteUrl}" alt="" onerror="this.style.display='none'">`
+      : ''
+    html += `<div class="my-group">
+      <div class="my-group-name">${spriteHtml}${name} <span style="color:#2a3a60;font-weight:400">(${variants.length})</span></div>`
+    for (let vi = 0; vi < variants.length; vi++) {
+      const v = variants[vi]
+      // myPokemon全体でのインデックスを探す
+      const globalIdx = myPokemon.findIndex(p => p.raw === v.raw)
+      const inTeam = teamSlots.some(s => s && s.raw === v.raw)
+      html += `
+        <div class="my-variant${inTeam?' in-team':''}" onclick="${inTeam?'':'addMyPokemon('+globalIdx+')'}" title="${inTeam?'チームに追加済み':'クリックでチームに追加'}">
+          <div class="my-variant-item">@ ${v.item||'—'} ／ ${v.nature||'—'}${inTeam?'<span class="my-variant-check"> ✓</span>':''}</div>
+          <div class="my-variant-moves">${v.moves.join(' / ')||''}</div>
+        </div>`
+    }
+    html += `</div>`
+  }
+  el.innerHTML = html
+}
+
+// ═══════════════════════════════════════════════
+//  アクション
+// ═══════════════════════════════════════════════
+
+function setFormat(btn) {
+  currentFormat = btn.dataset.fmt
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
+  btn.classList.add('active')
+  renderTeam()
+}
+
+function switchPTab(tab, btn) {
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'))
+  btn.classList.add('active')
+  document.getElementById('tabMine').style.display = tab==='mine' ? 'flex' : 'none'
+  document.getElementById('tabImport').style.display = tab==='import' ? 'flex' : 'none'
+}
+
+function parseImport() {
+  const text = document.getElementById('importText').value
+  if (!text.trim()) return
+  const parsed = parsePokeSol(text)
+  if (!parsed.length) { alert('解析できませんでした。\nフォーマットを確認してください。'); return }
+  let added = 0
+  for (const p of parsed) { if (!pool.some(ex => ex.raw===p.raw)) { pool.push(p); added++ } }
+  document.getElementById('importText').value = ''
+  renderPool()
+  if (added) { const el=document.getElementById('poolList'); el.scrollTop=el.scrollHeight }
+}
+
+function handleFileUpload(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = ev => {
+    const text = ev.target.result
+    const parsed = parsePokeSol(text)
+    if (!parsed.length) { alert('解析できませんでした。\nポケソルテキスト形式のtxtファイルを使用してください。'); return }
+    let added = 0
+    for (const p of parsed) { if (!pool.some(ex => ex.raw===p.raw)) { pool.push(p); added++ } }
+    renderPool()
+    // インポートタブに切り替え
+    document.querySelectorAll('.ptab')[1].click()
+    if (added) { const el=document.getElementById('poolList'); el.scrollTop=el.scrollHeight }
+    e.target.value = ''
+  }
+  reader.readAsText(file, 'UTF-8')
+}
+
+function addToTeam(idx) {
+  const poke = pool[idx]
+  const empty = teamSlots.indexOf(null)
+  if (empty===-1) { alert('チームが満員です。× ボタンで外してから追加してください。'); return }
+  teamSlots[empty] = JSON.parse(JSON.stringify(poke))
+  render()
+}
+
+function addMyPokemon(idx) {
+  const poke = myPokemon[idx]
+  const empty = teamSlots.indexOf(null)
+  if (empty===-1) { alert('チームが満員です。× ボタンで外してから追加してください。'); return }
+  teamSlots[empty] = JSON.parse(JSON.stringify(poke))
+  render()
+}
+
+function removeSlot(i) {
+  teamSlots[i] = null
+  render()
+}
+
+function downloadTeam() {
+  const members = teamSlots.filter(Boolean)
+  if (!members.length) { alert('チームにポケモンがいません。'); return }
+  const text = members.map(p => buildRaw(p)).join('\n\n')
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = 'team.txt'
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
+function buildRaw(poke) {
+  const lines = [`${poke.name} @ ${poke.item}`]
+  if (poke.teraType) lines.push(`テラスタイプ: ${poke.teraType}`)
+  if (poke.ability)  lines.push(`特性: ${poke.ability}`)
+  if (poke.nature)   lines.push(`性格: ${poke.nature}`)
+  if (poke.stats)    lines.push(poke.stats)
+  if (poke.moves.length) lines.push(poke.moves.join(' / '))
+  return lines.join('\n')
+}
+
+function highlightPool() {
+  const target = document.getElementById('tabMine').style.display !== 'none'
+    ? document.getElementById('myList')
+    : document.getElementById('poolList')
+  target.style.outline = '2px solid #2a50c0'
+  target.style.borderRadius = '6px'
+  setTimeout(() => { target.style.outline = ''; target.style.borderRadius = '' }, 800)
+}
+
+// ═══════════════════════════════════════════════
+//  モーダル（表示 + 編集）
+// ═══════════════════════════════════════════════
+
+let currentPoke = null
+
+function openEditModal(slotIdx) {
+  editSlotIdx = slotIdx
+  const poke = teamSlots[slotIdx]
+  _showModal(poke, true)
+}
+
+function openViewModal(poke) {
+  editSlotIdx = -1
+  _showModal(poke, false)
+}
+
+function _showModal(poke, editable) {
+  currentPoke = poke
+  document.getElementById('mName').textContent = poke.name
+  const spriteEl = document.getElementById('mSprite')
+  const spriteUrl = getSpriteUrl(poke.name)
+  if (spriteUrl) { spriteEl.src = spriteUrl; spriteEl.style.display = '' }
+  else { spriteEl.style.display = 'none' }
+  const types = getTypes(poke.name)
+  document.getElementById('mTypes').innerHTML = types.map(t =>
+    `<span class="type-badge" style="background:${TYPE_COLORS[t]||'#555'}">${t}</span>`
+  ).join('')
+  document.getElementById('mItem').textContent    = poke.item     || '—'
+  document.getElementById('mTera').textContent    = poke.teraType || '—'
+  document.getElementById('mAbility').textContent = poke.ability  || '—'
+  document.getElementById('mNature').textContent  = poke.nature   || '—'
+  document.getElementById('mStats').textContent   = poke.stats    || '—'
+  document.getElementById('mMoves').innerHTML = poke.moves.length
+    ? poke.moves.map(m => `<div class="modal-move">▸ ${m}</div>`).join('')
+    : '<div class="modal-move" style="color:#3a4060">技なし</div>'
+  document.getElementById('mRaw').textContent = buildRaw(poke)
+  document.getElementById('mRaw').style.display = 'none'
+
+  const editSection = document.getElementById('editSection')
+  if (editable) {
+    editSection.style.display = ''
+    const opts = getVariantOptions(poke.name)
+    // item select
+    _fillSelect('editItem', opts.items, poke.item)
+    // nature select
+    _fillSelect('editNature', opts.natures, poke.nature)
+    // move selects
+    for (let m = 0; m < 4; m++) {
+      _fillSelect('editMove'+m, opts.moves, poke.moves[m]||'', true)
+    }
+  } else {
+    editSection.style.display = 'none'
+  }
+
+  document.getElementById('overlay').classList.add('open')
+}
+
+function _fillSelect(id, options, currentVal, allowEmpty) {
+  const sel = document.getElementById(id)
+  sel.innerHTML = ''
+  if (allowEmpty) {
+    const opt = document.createElement('option')
+    opt.value = ''; opt.textContent = '（なし）'
+    sel.appendChild(opt)
+  }
+  // currentVal が options にない場合は先頭に追加
+  const allOpts = [...options]
+  if (currentVal && !allOpts.includes(currentVal)) allOpts.unshift(currentVal)
+  for (const v of allOpts) {
+    const opt = document.createElement('option')
+    opt.value = v; opt.textContent = v
+    if (v === currentVal) opt.selected = true
+    sel.appendChild(opt)
+  }
+}
+
+function saveEdit() {
+  if (editSlotIdx < 0) return
+  const poke = teamSlots[editSlotIdx]
+  poke.item   = document.getElementById('editItem').value
+  poke.nature = document.getElementById('editNature').value
+  poke.moves  = [0,1,2,3].map(i => document.getElementById('editMove'+i).value).filter(Boolean)
+  poke.raw    = buildRaw(poke)
+  closeModal()
+  render()
+}
+
+function closeModal() { document.getElementById('overlay').classList.remove('open') }
+function handleOverlayClick(e) { if (e.target.id==='overlay') closeModal() }
+function toggleRaw() {
+  const el = document.getElementById('mRaw')
+  const tog = document.querySelector('.modal-raw-toggle')
+  if (el.style.display==='none') { el.style.display='block'; tog.textContent='▾ ポケソルテキスト非表示' }
+  else { el.style.display='none'; tog.textContent='▸ ポケソルテキスト表示' }
+}
+
+// ═══════════════════════════════════════════════
+//  キーボード
+// ═══════════════════════════════════════════════
+
+document.addEventListener('keydown', e => { if (e.key==='Escape') closeModal() })
+
+// ═══════════════════════════════════════════════
+//  初期化
+// ═══════════════════════════════════════════════
+
+myPokemon = parsePokeSol(OWNED_MD_TEXT)
+render()
+</script>
+</body>
+</html>
