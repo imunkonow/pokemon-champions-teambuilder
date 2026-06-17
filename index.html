@@ -20,8 +20,8 @@ header h1 { font-size: 14px; font-weight: 700; color: #7ab4ff; letter-spacing: 0
 .btn-dl:hover { background: #2a3a58; }
 
 /* ── Layout ── */
-.layout { display: grid; grid-template-columns: 1fr 300px; grid-template-rows: 1fr 1fr; gap: 10px; padding: 10px; height: calc(100vh - 48px); }
-.import-panel { grid-column: 2; grid-row: 1 / 3; }
+.layout { display: grid; grid-template-columns: 300px 1fr; grid-template-rows: 1fr 1fr; gap: 10px; padding: 10px; height: calc(100vh - 48px); }
+.import-panel { grid-column: 1; grid-row: 1 / 3; }
 
 /* ── Panel ── */
 .panel { background: #13162a; border: 1px solid #1e2448; border-radius: 8px; padding: 14px; overflow: hidden; display: flex; flex-direction: column; }
@@ -1081,7 +1081,19 @@ function parsePokeSol(text) {
 //  スプライト
 // ═══════════════════════════════════════════════
 
+const SHOWDOWN_NAMES = {
+  'メガゲンガー':'gengar-mega','メガルカリオ':'lucario-mega',
+  'メガリザードンX':'charizard-mega-x','メガリザードンY':'charizard-mega-y',
+  'メガガルーラ':'kangaskhan-mega','メガバンギラス':'tyranitar-mega',
+  'メガエルレイド':'gallade-mega','メガアブソル':'absol-mega',
+  'メガジュカイン':'sceptile-mega','メガバシャーモ':'blaziken-mega',
+  'メガラグラージ':'swampert-mega','メガクチート':'mawile-mega',
+  'メガメタグロス':'metagross-mega',
+}
+
 function getSpriteUrl(name) {
+  if (SHOWDOWN_NAMES[name])
+    return `https://play.pokemonshowdown.com/sprites/gen6/${SHOWDOWN_NAMES[name]}.png`
   const id = SPRITE_IDS[name]
   if (!id) return null
   return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`
@@ -1241,7 +1253,15 @@ function renderTeam() {
           <span>${label}</span>
         </div>
       `
-      el.addEventListener('click', () => highlightPool())
+      el.addEventListener('click', () => {
+        const mineBtn = document.querySelectorAll('.ptab')[0]
+        switchPTab('mine', mineBtn)
+        const list = document.getElementById('myList')
+        list.style.outline = '2px solid #2a50c0'
+        list.style.borderRadius = '6px'
+        setTimeout(() => { list.style.outline = ''; list.style.borderRadius = '' }, 600)
+        document.getElementById('mySearch').focus()
+      })
     }
     grid.appendChild(el)
   }
