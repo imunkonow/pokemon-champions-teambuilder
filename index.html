@@ -132,6 +132,17 @@ header h1 { font-size: 14px; font-weight: 700; color: #7ab4ff; letter-spacing: 0
 .modal-raw-toggle { color: #404860; font-size: 10px; cursor: pointer; margin-top: 10px; user-select: none; }
 .modal-raw { font-family: 'Consolas',monospace; font-size: 10px; color: #506080; margin-top: 6px; white-space: pre-wrap; background: #0a0c18; padding: 8px; border-radius: 4px; display: none; }
 
+/* ── All Pokemon tab ── */
+.all-poke-item { background: #1a1e38; border: 1px solid #1e2448; border-radius: 5px; padding: 5px 8px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 7px; margin-bottom: 2px; }
+.all-poke-item:hover { border-color: #2a50c0; background: #161a30; }
+.all-poke-sprite { width: 26px; height: 26px; image-rendering: pixelated; flex-shrink: 0; }
+.all-poke-name { font-weight: 700; font-size: 11px; flex: 1; }
+.all-poke-types { display: flex; gap: 2px; }
+
+/* ── Add modal ── */
+.modal-input { background: #0a0c18; border: 1px solid #2a3060; border-radius: 4px; color: #c0d0e8; padding: 4px 6px; font-size: 11px; flex: 1; }
+.modal-input:focus { outline: none; border-color: #4a70e0; }
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -173,6 +184,7 @@ header h1 { font-size: 14px; font-weight: 700; color: #7ab4ff; letter-spacing: 0
   <div class="panel import-panel">
     <div class="panel-tabs">
       <button class="ptab active" onclick="switchPTab('mine',this)">所持</button>
+      <button class="ptab" onclick="switchPTab('all',this)">全ポケ</button>
       <button class="ptab" onclick="switchPTab('import',this)">インポート</button>
     </div>
 
@@ -180,6 +192,12 @@ header h1 { font-size: 14px; font-weight: 700; color: #7ab4ff; letter-spacing: 0
     <div id="tabMine" class="ptab-content">
       <input type="text" id="mySearch" class="my-search" placeholder="名前で絞り込み..." oninput="renderMyPokemon()">
       <div class="my-list" id="myList"><div class="my-empty">読み込み中...</div></div>
+    </div>
+
+    <!-- 全ポケタブ -->
+    <div id="tabAll" class="ptab-content" style="display:none">
+      <input type="text" id="allSearch" class="my-search" placeholder="名前で絞り込み..." oninput="renderAllPokemon()">
+      <div class="my-list" id="allList"></div>
     </div>
 
     <!-- インポートタブ -->
@@ -199,6 +217,39 @@ header h1 { font-size: 14px; font-weight: 700; color: #7ab4ff; letter-spacing: 0
     </div>
   </div>
 
+</div>
+
+<!-- 追加モーダル -->
+<div class="overlay" id="addOverlay" onclick="handleAddOverlayClick(event)">
+  <div class="modal" id="addModal">
+    <div class="modal-head">
+      <div class="modal-head-left">
+        <img id="aMSprite" class="modal-head-sprite" src="" alt="" onerror="this.style.display='none'" style="display:none">
+        <div>
+          <input class="modal-input" id="aMName" placeholder="ポケモン名" style="font-size:16px;font-weight:700;width:180px">
+          <div id="aMTypes" style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap"></div>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeAddModal()">×</button>
+    </div>
+    <div class="modal-row"><span class="modal-key">テラスタイプ</span>
+      <select class="modal-select" id="aEditTera"></select></div>
+    <div class="modal-row"><span class="modal-key">特性</span>
+      <input class="modal-input" id="aEditAbility" type="text" placeholder="特性名"></div>
+    <div class="modal-row"><span class="modal-key">持ち物</span>
+      <select class="modal-select" id="aEditItem"></select></div>
+    <div class="modal-row"><span class="modal-key">性格</span>
+      <select class="modal-select" id="aEditNature"></select></div>
+    <div class="modal-row"><span class="modal-key">技1</span>
+      <select class="modal-select" id="aEditMove0"></select></div>
+    <div class="modal-row"><span class="modal-key">技2</span>
+      <select class="modal-select" id="aEditMove1"></select></div>
+    <div class="modal-row"><span class="modal-key">技3</span>
+      <select class="modal-select" id="aEditMove2"></select></div>
+    <div class="modal-row"><span class="modal-key">技4</span>
+      <select class="modal-select" id="aEditMove3"></select></div>
+    <button class="modal-save" onclick="addNewPokemonToTeam()">チームに追加</button>
+  </div>
 </div>
 
 <!-- モーダル -->
@@ -325,7 +376,19 @@ const POKEMON_TYPES = {
   'メタグロス':['はがね','エスパー'],
   'ムクホーク':['ノーマル','ひこう'],'メガムクホーク':['ノーマル','ひこう'],
   'アンニポン':['かくとう','ゴースト'],
-  'テツノカシラ':['はがね','ドラゴン'],
+  'テツノカシラ':['はがね','ゴースト'],
+  'ラフレシア':['くさ','どく'],'ハリーセン':['みず','どく'],
+  'ジュカイン':['くさ'],'メガジュカイン':['くさ','ドラゴン'],
+  'バシャーモ':['ほのお','かくとう'],'メガバシャーモ':['ほのお','かくとう'],
+  'ラグラージ':['みず','じめん'],'メガラグラージ':['みず','じめん'],
+  'クチート':['はがね','フェアリー'],'メガクチート':['はがね','フェアリー'],
+  'メタグロス':['はがね','エスパー'],'メガメタグロス':['はがね','エスパー'],
+  'ムクホーク':['ノーマル','ひこう'],'メガムクホーク':['ノーマル','ひこう'],
+  'ムシャーナ':['エスパー'],'ペンドラー':['むし','どく'],'ズルズキン':['あく','かくとう'],
+  'シビルドン':['でんき'],'カエンジシ':['ほのお','ノーマル'],
+  'カラマネロ':['あく','エスパー'],'ガメノデス':['いわ','みず'],'ドラミドロ':['どく','ドラゴン'],
+  'オーロンゲ':['あく','フェアリー'],'タイレーツ':['かくとう'],
+  'オーバーキル':['どく','あく'],'ハカドッグ':['ゴースト'],
 }
 
 // ポケAPI スプライトID
@@ -354,6 +417,19 @@ const SPRITE_IDS = {
   'ブラッキー':197,'ラウドボーン':911,'メタモン':132,
   'ワルビアル':553,'ニャオニクス':678,'エルフーン':547,
   'オニシズクモ':752,'アンニポン':979,
+  'ユキメノコ':478,'ケケンカニ':740,'メガケケンカニ':740,
+  'メタグロス':376,'メガメタグロス':10077,
+  'ムクホーク':398,'メガムクホーク':398,
+  'ラフレシア':45,'ハリーセン':211,
+  'ジュカイン':254,'メガジュカイン':10065,
+  'バシャーモ':257,'メガバシャーモ':10071,
+  'ラグラージ':260,'メガラグラージ':10064,
+  'クチート':303,'メガクチート':10043,
+  'ムシャーナ':518,'ペンドラー':545,'ズルズキン':560,
+  'シビルドン':604,'カエンジシ':668,'カラマネロ':687,
+  'ガメノデス':689,'ドラミドロ':691,'オーロンゲ':861,
+  'タイレーツ':870,'オーバーキル':904,'ハカドッグ':930,
+  'テツノカシラ':1000,
 }
 
 const ALL_NATURES = [
@@ -967,6 +1043,8 @@ let teamSlots = Array(6).fill(null)
 let pool = []
 let myPokemon = []
 let editSlotIdx = -1
+let ALL_MOVES = []
+let ALL_ITEMS = []
 
 // ═══════════════════════════════════════════════
 //  パーサー
@@ -1259,8 +1337,10 @@ function setFormat(btn) {
 function switchPTab(tab, btn) {
   document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'))
   btn.classList.add('active')
-  document.getElementById('tabMine').style.display = tab==='mine' ? 'flex' : 'none'
+  document.getElementById('tabMine').style.display   = tab==='mine'   ? 'flex' : 'none'
+  document.getElementById('tabAll').style.display    = tab==='all'    ? 'flex' : 'none'
   document.getElementById('tabImport').style.display = tab==='import' ? 'flex' : 'none'
+  if (tab==='all') renderAllPokemon()
 }
 
 function parseImport() {
@@ -1393,9 +1473,10 @@ function _showModal(poke, editable) {
     _fillSelect('editItem', opts.items, poke.item)
     // nature select
     _fillSelect('editNature', opts.natures, poke.nature)
-    // move selects
+    // move selects (owned moves first, then all known moves)
+    const allMovesForEdit = [...opts.moves, ...ALL_MOVES.filter(mv=>!opts.moves.includes(mv))]
     for (let m = 0; m < 4; m++) {
-      _fillSelect('editMove'+m, opts.moves, poke.moves[m]||'', true)
+      _fillSelect('editMove'+m, allMovesForEdit, poke.moves[m]||'', true)
     }
   } else {
     editSection.style.display = 'none'
@@ -1436,6 +1517,79 @@ function saveEdit() {
 
 function closeModal() { document.getElementById('overlay').classList.remove('open') }
 function handleOverlayClick(e) { if (e.target.id==='overlay') closeModal() }
+
+// ═══════════════════════════════════════════════
+//  全ポケタブ
+// ═══════════════════════════════════════════════
+
+function renderAllPokemon() {
+  const el = document.getElementById('allList')
+  const q = (document.getElementById('allSearch').value||'').toLowerCase()
+  const all = Object.keys(POKEMON_TYPES).sort((a,b)=>a.localeCompare(b,'ja'))
+  const filtered = q ? all.filter(n=>n.toLowerCase().includes(q)) : all
+  if (!filtered.length) { el.innerHTML = '<div class="my-empty">該当なし</div>'; return }
+  el.innerHTML = filtered.map(name => {
+    const types = POKEMON_TYPES[name]||[]
+    const badges = types.map(t=>`<span class="type-badge" style="background:${TYPE_COLORS[t]||'#555'};font-size:8px">${t}</span>`).join('')
+    const spriteUrl = getSpriteUrl(name)
+    const spriteHtml = spriteUrl
+      ? `<img class="all-poke-sprite" src="${spriteUrl}" onerror="this.style.display='none'">`
+      : `<div class="all-poke-sprite" style="font-size:16px;display:flex;align-items:center;justify-content:center">🎮</div>`
+    return `<div class="all-poke-item" onclick="openAddPokemonModal('${name.replace(/'/g,'\\\'')}')">${spriteHtml}<span class="all-poke-name">${name}</span><div class="all-poke-types">${badges}</div></div>`
+  }).join('')
+}
+
+function openAddPokemonModal(name) {
+  const spriteEl = document.getElementById('aMSprite')
+  const spriteUrl = getSpriteUrl(name)
+  if (spriteUrl) { spriteEl.src = spriteUrl; spriteEl.style.display = '' }
+  else { spriteEl.style.display = 'none' }
+  document.getElementById('aMName').value = name
+  const types = getTypes(name)
+  document.getElementById('aMTypes').innerHTML = types.map(t =>
+    `<span class="type-badge" style="background:${TYPE_COLORS[t]||'#555'}">${t}</span>`
+  ).join('')
+  // テラスタイプ
+  const teraEl = document.getElementById('aEditTera')
+  teraEl.innerHTML = TYPES.map(t=>`<option value="${t}">${t}</option>`).join('')
+  if (types[0]) teraEl.value = types[0]
+  // 持ち物
+  const itemEl = document.getElementById('aEditItem')
+  itemEl.innerHTML = '<option value="">（なし）</option>' + ALL_ITEMS.map(i=>`<option value="${i}">${i}</option>`).join('')
+  // 性格
+  const natEl = document.getElementById('aEditNature')
+  natEl.innerHTML = ALL_NATURES.map(n=>`<option value="${n}">${n}</option>`).join('')
+  // 技
+  const moveOpts = '<option value="">（なし）</option>' + ALL_MOVES.map(m=>`<option value="${m}">${m}</option>`).join('')
+  for (let i=0;i<4;i++) document.getElementById('aEditMove'+i).innerHTML = moveOpts
+  document.getElementById('aEditAbility').value = ''
+  document.getElementById('addOverlay').classList.add('open')
+}
+
+function addNewPokemonToTeam() {
+  const name = document.getElementById('aMName').value.trim()
+  if (!name) return
+  const empty = teamSlots.indexOf(null)
+  if (empty===-1) { alert('チームが満員です。× ボタンで外してから追加してください。'); return }
+  const moves = [0,1,2,3].map(i=>document.getElementById('aEditMove'+i).value).filter(Boolean)
+  const poke = {
+    name,
+    item: document.getElementById('aEditItem').value,
+    teraType: document.getElementById('aEditTera').value,
+    ability: document.getElementById('aEditAbility').value,
+    nature: document.getElementById('aEditNature').value,
+    stats: '',
+    moves,
+    raw: '',
+  }
+  poke.raw = buildRaw(poke)
+  teamSlots[empty] = poke
+  closeAddModal()
+  render()
+}
+
+function closeAddModal() { document.getElementById('addOverlay').classList.remove('open') }
+function handleAddOverlayClick(e) { if (e.target.id==='addOverlay') closeAddModal() }
 function toggleRaw() {
   const el = document.getElementById('mRaw')
   const tog = document.querySelector('.modal-raw-toggle')
@@ -1447,13 +1601,15 @@ function toggleRaw() {
 //  キーボード
 // ═══════════════════════════════════════════════
 
-document.addEventListener('keydown', e => { if (e.key==='Escape') closeModal() })
+document.addEventListener('keydown', e => { if (e.key==='Escape') { closeModal(); closeAddModal() } })
 
 // ═══════════════════════════════════════════════
 //  初期化
 // ═══════════════════════════════════════════════
 
 myPokemon = parsePokeSol(OWNED_MD_TEXT)
+ALL_MOVES = [...new Set(myPokemon.flatMap(p => p.moves))].sort((a,b)=>a.localeCompare(b,'ja'))
+ALL_ITEMS = [...new Set(myPokemon.map(p => p.item).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja'))
 render()
 </script>
 </body>
