@@ -12,8 +12,8 @@
 
 | フェーズ | 状態 | 内容 |
 |---|---|---|
-| **Prototype** | **← 今ここ** | 静的ファイルを開くだけの構想レベル。動けばOK |
-| **Static App** | 次 | Vite + React + localStorage。サーバー不要 |
+| **Prototype** | **実装済(2026-06-18)** | React(CDN+Babel classic runtime)単一HTML + data.js分離。Node不要でGitHub Pages配信。明るめ3カラム/技範囲/選出弱点/努力値入力など全機能動作。`index.html`+`data.js` |
+| **Static App** | **← 次** | Vite + React + TS + Tailwind へ移行(要Nodeインストール)。スマホレスポンシブ精緻化。localStorage継続 |
 | **Full App** | 将来 | 全ポケモンデータ・EV入力・DB保存・認証など |
 
 > 今は構想を練る段階。実装は Static App フェーズから始める。
