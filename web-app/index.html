@@ -77,6 +77,22 @@ header h1{font-size:15px;font-weight:800;color:var(--accent);letter-spacing:.04e
 .mini-btn.rm{color:var(--bad)}
 .mini-btn.rm:hover{background:#fdedeb}
 
+/* カード内インライン編集 */
+.pitem-in{border:1px solid transparent;background:transparent;color:var(--muted);font-size:10px;border-radius:4px;padding:1px 3px;width:calc(100% - 14px);font-family:inherit}
+.pitem-in:hover{border-color:var(--line2);background:var(--panel2)}
+.pitem-in:focus{outline:none;border-color:var(--accent2);background:#fff;color:var(--text)}
+.pmove-in{flex:1;min-width:0;border:1px solid transparent;background:transparent;color:#4a5572;font-size:10px;border-radius:4px;padding:1px 4px;font-family:inherit}
+.pmove-in:hover{border-color:var(--line2);background:var(--panel2)}
+.pmove-in:focus{outline:none;border-color:var(--accent2);background:#fff}
+.pmove-in::placeholder{color:var(--faint)}
+
+/* 使い方ヒント */
+.tip{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:var(--accent2);color:#fff;font-size:10px;font-weight:800;line-height:1;cursor:help;flex-shrink:0;position:relative;user-select:none}
+.tip:hover,.tip:focus{background:var(--accent);outline:none}
+.tip::after{content:attr(data-tip);position:absolute;top:150%;left:0;background:#26304a;color:#fff;font-size:11px;font-weight:500;line-height:1.55;letter-spacing:0;text-transform:none;text-align:left;padding:8px 11px;border-radius:8px;width:max-content;max-width:240px;white-space:normal;box-shadow:0 8px 24px rgba(30,40,80,.32);opacity:0;visibility:hidden;transform:translateY(-3px);transition:.15s;z-index:300;pointer-events:none}
+.tip:hover::after,.tip:focus::after{opacity:1;visibility:visible;transform:translateY(0)}
+@media(max-width:760px){.tip::after{max-width:200px;left:auto;right:0}}
+
 /* 分析 */
 .ana-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
 .atab{flex:1;min-width:80px;padding:6px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;color:var(--muted);font-size:11px;cursor:pointer;transition:.15s;font-weight:600}
@@ -295,7 +311,7 @@ const ALL_ITEMS   = sortJa(uniq(OWNED.map(p=>p.item)))
 const ALL_ABIL    = sortJa(uniq(OWNED.map(p=>p.ability)))
 const EV_LABELS   = ['HP','こうげき','ぼうぎょ','とくこう','とくぼう','すばやさ']
 const EV_PRESET   = [0,4,32,52,100,124,156,196,252]
-const EV_DEFAULT  = 32
+const EV_DEFAULT  = 0   // 採用率データ未導入のためオール0が既定
 
 // ── 相性計算 ──
 function calcWeak(members){
@@ -357,6 +373,24 @@ function App(){
     setTeam(t=>t.map((x,j)=>j===i?np:x))
   }
   function removeSlot(i){setTeam(t=>t.map((x,j)=>j===i?null:x))}
+  function updateSlot(i,patch){
+    setTeam(t=>t.map((x,j)=>{
+      if(j!==i||!x)return x
+      const np={...x,...patch}
+      if('name'in patch||'nature'in patch) np.stats=recalcStats(np.stats,np.name,np.nature)
+      np.raw=buildRaw(np)
+      return np
+    }))
+  }
+  function updateMove(i,k,v){
+    setTeam(t=>t.map((x,j)=>{
+      if(j!==i||!x)return x
+      const moves=[...(x.moves||['','','',''])]; while(moves.length<4)moves.push('')
+      moves[k]=v
+      const np={...x,moves}; np.raw=buildRaw(np)
+      return np
+    }))
+  }
   function toggleStar(i){
     setTeam(t=>{
       const cur=t[i]; if(!cur)return t
@@ -405,7 +439,7 @@ function App(){
       <div className="layout">
         <div className="main-col">
         <div className="panel">
-          <div className="panel-title">チーム構成 <span style={{color:'var(--muted)',fontWeight:600}}>選出 {selected.length}/{maxSel}</span></div>
+          <div className="panel-title"><span style={{display:'flex',alignItems:'center',gap:6}}>チーム構成 <Tip text="★=選出メンバーをマーク。持ち物・技はカード上で直接編集できます。✏で性格・努力値まで詳しく編集。" /></span> <span style={{color:'var(--muted)',fontWeight:600}}>選出 {selected.length}/{maxSel}</span></div>
           {(dup.dn.length||dup.din.length)?(
             <div className="dup-warning">
               {dup.dn.length?<div>⚠ 同じポケモン: {dup.dn.join(', ')}</div>:null}
@@ -417,6 +451,7 @@ function App(){
               <Slot key={i} poke={p} idx={i} format={format}
                 dupP={dup.dp.has(i)} dupI={dup.dit.has(i)}
                 onStar={()=>toggleStar(i)} onRemove={()=>removeSlot(i)}
+                onUpdate={patch=>updateSlot(i,patch)} onMove={(k,v)=>updateMove(i,k,v)}
                 onEdit={()=>setModal({mode:'edit',slot:i,draft:cloneDraft(p)})}
                 onAdd={()=>setModal({mode:'add',slot:null,draft:blankDraft()})} />
             ))}
@@ -424,7 +459,7 @@ function App(){
         </div>
 
         <div className="panel">
-          <div className="panel-title">チーム分析</div>
+          <div className="panel-title"><span style={{display:'flex',alignItems:'center',gap:6}}>チーム分析 <Tip text="弱点指数=4倍×2+2倍の合計。低いほど弱点が少なく安定。技範囲タブは攻撃技で抜群を取れない『穴』を確認できます。" /></span></div>
           <div className="ana-tabs">
             <button className={'atab'+(anaTab==='teamWeak'?' active':'')} onClick={()=>setAnaTab('teamWeak')}>チーム弱点</button>
             <button className={'atab'+(anaTab==='selWeak'?' active':'')} onClick={()=>setAnaTab('selWeak')}>選出弱点</button>
@@ -438,7 +473,7 @@ function App(){
 
         <aside className="side-col">
         <div className="panel">
-          <div className="panel-title">ポケモン追加</div>
+          <div className="panel-title"><span style={{display:'flex',alignItems:'center',gap:6}}>ポケモン追加 <Tip text="全ポケ=詳細入力して追加 / 所持=登録済みの個体から / インポート=ポケソルのテキストを貼り付けて一括追加。" /></span></div>
           <button className="btn-add-new" onClick={()=>setModal({mode:'add',slot:null,draft:blankDraft()})}>＋ 詳細入力で追加</button>
           <div className="ptabs">
             <button className={'ptab'+(rightTab==='all'?' active':'')} onClick={()=>setRightTab('all')}>全ポケ</button>
@@ -455,8 +490,18 @@ function App(){
       </div>
 
       {modal && <EditModal modal={modal} onClose={()=>setModal(null)} onSave={saveDraft} />}
+
+      <datalist id="dl-names">{ALL_NAMES.map(n=><option key={n} value={n}/>)}</datalist>
+      <datalist id="dl-items">{ALL_ITEMS.map(n=><option key={n} value={n}/>)}</datalist>
+      <datalist id="dl-abil">{ALL_ABIL.map(n=><option key={n} value={n}/>)}</datalist>
+      <datalist id="dl-moves">{ALL_MOVES.map(n=><option key={n} value={n}/>)}</datalist>
     </div>
   )
+}
+
+// ── 使い方ヒント（丸い?アイコン＋吹き出し） ──
+function Tip({text}){
+  return <span className="tip" tabIndex={0} role="button" aria-label="ヒント" data-tip={text} onClick={e=>e.stopPropagation()}>?</span>
 }
 
 function cloneDraft(p){ return JSON.parse(JSON.stringify(p)) }
@@ -467,7 +512,7 @@ function blankDraft(name=''){
 }
 
 // ── スロット ──
-function Slot({poke,idx,format,dupP,dupI,onStar,onRemove,onEdit,onAdd}){
+function Slot({poke,idx,format,dupP,dupI,onStar,onRemove,onUpdate,onMove,onEdit,onAdd}){
   if(!poke){
     const label = format==='single' ? (idx<3?`枠 ${idx+1}`:`控え ${idx-2}`) : (idx<4?`枠 ${idx+1}`:`控え ${idx-3}`)
     return <div className="slot" onClick={onAdd}><div className="slot-empty"><span className="plus">＋</span><span>{label}</span></div></div>
@@ -482,15 +527,16 @@ function Slot({poke,idx,format,dupP,dupI,onStar,onRemove,onEdit,onAdd}){
           {url?<img className="pcard-sprite" src={url} alt="" onError={e=>e.target.style.display='none'}/>:<div className="pcard-sprite-ph">🎮</div>}
           <div className="pcard-main">
             <div className="pname" onClick={onEdit} title="クリックで編集">{poke.name}</div>
-            <div className="pitem">@ {poke.item||'—'}</div>
+            <div className="pitem">@ <input className="pitem-in" list="dl-items" value={poke.item||''} placeholder="持ち物" onChange={e=>onUpdate({item:e.target.value})} /></div>
             <div className="ptypes">{types.map(t=><span key={t} className="type-badge" style={{background:TYPE_COLORS[t]||'#888'}}>{t}</span>)}</div>
           </div>
         </div>
         <div className="pmoves">
-          {(poke.moves||[]).filter(Boolean).map((m,k)=>{
+          {[0,1,2,3].map(k=>{
+            const m=(poke.moves||[])[k]||''
             const mi=moveInfo(m)
             const col=mi?TYPE_COLORS[mi[0]]:'#cbd3e6'
-            return <div key={k} className="pmove"><span className="mdot" style={{background:col}} title={mi?mi[0]:'タイプ未登録'}></span>{m}</div>
+            return <div key={k} className="pmove"><span className="mdot" style={{background:col}} title={mi?mi[0]:'タイプ未登録'}></span><input className="pmove-in" list="dl-moves" value={m} placeholder={'技'+(k+1)} onChange={e=>onMove(k,e.target.value)} /></div>
           })}
         </div>
         <div className="pnature">{poke.nature||''}{poke.ability?' · '+poke.ability:''}{poke.teraType?' · テラ'+poke.teraType:''}</div>
@@ -726,7 +772,7 @@ function EditModal({modal,onClose,onSave}){
           )
         })}
 
-        <div className="modal-sec">努力値・実数値</div>
+        <div className="modal-sec" style={{display:'flex',alignItems:'center',gap:6}}>努力値・実数値 <Tip text="努力値を入れると実数値を自動計算(Lv50・個体値31)。種族値未登録のポケモンは実数値を手入力。努力値は合計510まで。既定はオール0。" /></div>
         <div className="ana-note" style={{margin:'0 0 8px'}}>努力値（左）→ 実数値（右）が自動計算{base?'（Lv50・個体値31）':'：種族値未登録のため右は手入力'}</div>
         <div className="ev-grid">
           {EV_LABELS.map((lab,i)=>(
@@ -750,11 +796,6 @@ function EditModal({modal,onClose,onSave}){
         <div className="modal-raw-tog" onClick={()=>setShowRaw(s=>!s)}>{showRaw?'▾ ポケソルテキスト非表示':'▸ ポケソルテキスト表示'}</div>
         {showRaw && <div className="modal-raw">{buildRaw(d)}</div>}
       </div>
-
-      <datalist id="dl-names">{ALL_NAMES.map(n=><option key={n} value={n}/>)}</datalist>
-      <datalist id="dl-items">{ALL_ITEMS.map(n=><option key={n} value={n}/>)}</datalist>
-      <datalist id="dl-abil">{ALL_ABIL.map(n=><option key={n} value={n}/>)}</datalist>
-      <datalist id="dl-moves">{ALL_MOVES.map(n=><option key={n} value={n}/>)}</datalist>
     </div>
   )
 }
