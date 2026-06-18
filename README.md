@@ -1,1 +1,1 @@
-# https://imunkonow.github.io/pokemon-champions-teambuilder/
+# https://imunkonow.github.io/pokemon-champions-teambuilder/web-app
