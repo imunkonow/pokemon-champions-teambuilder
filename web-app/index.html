@@ -9,8 +9,8 @@
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="./data.js?v=4"></script>
-<link rel="stylesheet" href="./style.css?v=4">
+<script src="./data.js?v=5"></script>
+<link rel="stylesheet" href="./style.css?v=5">
 </head>
 <body>
 <div id="root"></div>
@@ -71,9 +71,17 @@ function buildRaw(p){
 function getTypes(name){
   if(!name) return []
   if(POKEMON_TYPES[name]) return POKEMON_TYPES[name]
+  const mega=name.replace(/^メガ/,'')            // 未登録メガはベース流用
+  if(mega!==name && POKEMON_TYPES[mega]) return POKEMON_TYPES[mega]
   const keys=Object.keys(POKEMON_TYPES)
   const hit=keys.find(k=>name.startsWith(k)||k.startsWith(name.replace(/[（(].*[）)]/,'')))
   return hit?POKEMON_TYPES[hit]:[]
+}
+// 同一ポケ内で重複している技名の配列を返す
+function findDupMoves(moves){
+  const seen={}, dups=new Set()
+  ;(moves||[]).forEach(m=>{ if(!m)return; if(seen[m])dups.add(m); seen[m]=1 })
+  return [...dups]
 }
 function getSpriteUrl(name){
   if(SHOWDOWN_NAMES[name]) return `https://play.pokemonshowdown.com/sprites/gen6/${SHOWDOWN_NAMES[name]}.png`
@@ -326,14 +334,19 @@ function App(){
   return (
     <div>
       <header>
-        <h1>⚔ ポケモンチャンピオンズ チームビルダー</h1>
-        <div className="tabs">
-          <button className={'tab'+(format==='single'?' active':'')} onClick={()=>setFormat('single')}>シングル (3/6)</button>
-          <button className={'tab'+(format==='double'?' active':'')} onClick={()=>setFormat('double')}>ダブル (4/6)</button>
+        <div className="hdr-main">
+          <h1>⚔ チームビルダー</h1>
+          <span className="fmt-tog" title="ルール切替">
+            <button className={'fmt-btn'+(format==='single'?' on':'')} onClick={()=>setFormat('single')} title="シングル 3/6選出">シングル</button>
+            <button className={'fmt-btn'+(format==='double'?' on':'')} onClick={()=>setFormat('double')} title="ダブル 4/6選出">ダブル</button>
+          </span>
+          <span className="reg-mini" title="レギュレーション M-B（2026-06-17〜09-02）">M-B</span>
         </div>
-        <div className="reg-badge">Regulation M-B</div>
-        <button className="btn-dl" onClick={downloadTeam}>⬇ テキスト出力</button>
-        <button className="btn-dl" onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} title="ダークモード切替">{theme==='dark'?'☀ ライト':'🌙 ダーク'}</button>
+        <div className="hdr-actions">
+          <button className="btn-add-hdr" onClick={()=>setModal({mode:'add',slot:null,draft:blankDraft()})} title="ポケモンを追加">＋ ポケモン</button>
+          <button className="btn-ico" onClick={downloadTeam} title="チームをテキスト出力">⬇</button>
+          <button className="btn-ico" onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} title="ダークモード切替">{theme==='dark'?'☀':'🌙'}</button>
+        </div>
       </header>
 
       <div className="layout">
@@ -458,6 +471,7 @@ function Slot({poke,idx,format,dupP,dupI,onStar,onRemove,onUpdate,onMove,onEdit,
   const base=getBase(poke.name)
   const spe=poke.stats&&poke.stats[5]?(poke.stats[5].val||0):0
   const evParts=poke.stats?poke.stats.map((s,i)=>s.ev?EV_KEYS[i]+s.ev:null).filter(Boolean):[]
+  const dupMv=findDupMoves(poke.moves)
   return (
     <div className={'slot filled'+(poke.selected?' selected':'')+(dupP?' dup-poke':'')+(dupI?' dup-item':'')}
          onDragOver={e=>e.preventDefault()} onDrop={onDrop}>
@@ -477,9 +491,11 @@ function Slot({poke,idx,format,dupP,dupI,onStar,onRemove,onUpdate,onMove,onEdit,
             const m=(poke.moves||[])[k]||''
             const mi=moveInfo(m)
             const col=mi?TYPE_COLORS[mi[0]]:'#cbd3e6'
-            return <div key={k} className="pmove"><span className="mdot" style={{background:col}} title={mi?mi[0]:'タイプ未登録'}></span><MoveSelect className="pmove-in" value={m} placeholder={'技'+(k+1)} onChange={v=>onMove(k,v)} /></div>
+            const isDup=m&&dupMv.includes(m)
+            return <div key={k} className="pmove"><span className="mdot" style={{background:col}} title={mi?mi[0]:'タイプ未登録'}></span><MoveSelect className={'pmove-in'+(isDup?' dup-move':'')} value={m} placeholder={'技'+(k+1)} onChange={v=>onMove(k,v)} /></div>
           })}
         </div>
+        {dupMv.length?<div className="dup-move-warn">⚠ 技が重複: {dupMv.join(', ')}</div>:null}
         {base&&spe?<div className="pspeed" title="すばやさ実数値（種族値）／こだわりスカーフ時(×1.5)">素早さ実数値 <b>{spe}</b> <span>(種{base[5]})</span> ／ (スカーフ) <b>{Math.floor(spe*1.5)}</b></div>:null}
         {evParts.length?<div className="pev">努力値 <b>{evParts.join(' / ')}</b></div>:null}
         <div className="pnature">{poke.nature||''}{poke.ability?' · '+poke.ability:''}{poke.teraType?' · テラ'+poke.teraType:''}</div>
@@ -814,6 +830,7 @@ function EditModal({modal,evMode,onClose,onSave}){
   const url=getSpriteUrl(d.name)
   const evTotal=d.stats.reduce((s,x)=>s+(x.ev||0),0)
   const tmpls = OWNED.filter(p=>p.name===d.name)
+  const dupMv = findDupMoves(d.moves)
 
   function applyTmpl(idx){
     if(idx<0)return
@@ -855,12 +872,14 @@ function EditModal({modal,evMode,onClose,onSave}){
           </select></div>
 
         <div className="modal-sec">技</div>
+        {dupMv.length?<div className="dup-move-warn" style={{margin:'0 0 8px'}}>⚠ 技が重複しています: {dupMv.join(', ')}</div>:null}
         {[0,1,2,3].map(i=>{
           const mi=moveInfo(d.moves[i])
+          const isDup=d.moves[i]&&dupMv.includes(d.moves[i])
           return (
             <div className="frow" key={i}>
               <span className="mdot" style={{background:mi?TYPE_COLORS[mi[0]]:'#cbd3e6',width:12,height:12}} title={mi?mi[0]:'未登録'}></span>
-              <MoveSelect className="fsel" value={d.moves[i]||''} placeholder={'技'+(i+1)+'を選択'} onChange={v=>setMove(i,v)} />
+              <MoveSelect className={'fsel'+(isDup?' dup-move':'')} value={d.moves[i]||''} placeholder={'技'+(i+1)+'を選択'} onChange={v=>setMove(i,v)} />
             </div>
           )
         })}

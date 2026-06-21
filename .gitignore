@@ -1,4 +1,6 @@
 .gitignore
+/database
+/old
 
 # Claude meta
 CLAUDE.md

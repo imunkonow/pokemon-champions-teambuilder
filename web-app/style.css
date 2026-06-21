@@ -16,15 +16,26 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','Noto Sans JP
 button{font-family:inherit}
 a{color:var(--accent)}
 
-header{background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:50;box-shadow:var(--shadow);flex-wrap:wrap}
-header h1{font-size:15px;font-weight:800;color:var(--accent);letter-spacing:.04em;white-space:nowrap}
-.tabs{display:flex;gap:4px}
-.tab{padding:5px 14px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;color:var(--muted);cursor:pointer;font-size:12px;transition:.15s}
-.tab.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
-.tab:hover:not(.active){border-color:var(--accent2);color:var(--accent)}
-.reg-badge{margin-left:auto;background:#e8f6ee;border:1px solid #b8e2c8;color:var(--good);padding:4px 11px;border-radius:6px;font-size:11px;font-weight:700}
+header{background:var(--panel);border-bottom:1px solid var(--line);padding:8px 14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:50;box-shadow:var(--shadow);flex-wrap:wrap}
+header h1{font-size:14px;font-weight:800;color:var(--accent);letter-spacing:.02em;white-space:nowrap}
+/* ── ヘッダー：タイトル＋ルール切替＋レギュをコンパクトに ── */
+.hdr-main{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.hdr-actions{display:flex;align-items:center;gap:6px;margin-left:auto}
+.fmt-tog{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;flex-shrink:0}
+.fmt-btn{background:var(--panel2);border:none;border-right:1px solid var(--line);color:var(--muted);font-size:11px;font-weight:700;padding:4px 11px;cursor:pointer;transition:.12s;font-family:inherit;line-height:1.3}
+.fmt-btn:last-child{border-right:none}
+.fmt-btn:hover:not(.on){color:var(--accent)}
+.fmt-btn.on{background:var(--accent);color:#fff}
+.reg-mini{background:#e8f6ee;border:1px solid #b8e2c8;color:var(--good);padding:2px 7px;border-radius:5px;font-size:10px;font-weight:800;flex-shrink:0}
+.btn-add-hdr{background:var(--accent);border:none;color:#fff;padding:5px 12px;border-radius:7px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;transition:.12s}
+.btn-add-hdr:hover{background:#2f55c8}
+.btn-ico{background:var(--panel2);border:1px solid var(--line);color:var(--accent);width:32px;height:32px;border-radius:7px;font-size:14px;cursor:pointer;transition:.12s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.btn-ico:hover{background:var(--hover)}
 .btn-dl{background:var(--panel2);border:1px solid var(--line);color:var(--accent);padding:4px 11px;border-radius:6px;font-size:11px;cursor:pointer;transition:.15s}
 .btn-dl:hover{background:var(--hover)}
+/* 技重複の警告 */
+.dup-move-warn{color:var(--bad);font-size:10px;font-weight:700;margin-top:4px;line-height:1.5}
+.dup-move{border-color:var(--bad)!important;background:#fdeceb!important;color:var(--bad)!important}
 
 .layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:12px;padding:12px;align-items:start}
 .main-col{display:flex;flex-direction:column;gap:12px;min-width:0}
@@ -245,17 +256,16 @@ select{cursor:pointer;min-height:30px}
 /* スマホ最適化 */
 @media(max-width:760px){
   body{font-size:14px}
-  header{padding:9px 12px;gap:8px}
-  header h1{font-size:14px}
-  .tab{padding:6px 12px;font-size:12px}
-  .reg-badge{margin-left:0;order:3}
-  .btn-dl{order:4}
+  header{padding:7px 10px;gap:7px}
+  header h1{font-size:13px}
+  .hdr-main{gap:6px}
+  .fmt-btn{padding:5px 10px;font-size:11px}
   .list{max-height:48vh}
 }
 @media(max-width:520px){
-  header h1{width:100%}
-  .tabs{flex:1}
-  .tab{flex:1;text-align:center}
+  header h1{font-size:12.5px}
+  .btn-add-hdr{padding:5px 10px;font-size:11.5px}
+  .hdr-actions{gap:5px}
 }
 @media(max-width:480px){
   .modal{padding:15px;border-radius:12px}
@@ -274,6 +284,8 @@ select{cursor:pointer;min-height:30px}
 /* タッチ端末：指で押しやすい最小タップ高（44px目安） */
 @media(hover:none){
   .tab,.ptab,.atab,.btn-dl,.btn-up,.btn-parse{min-height:44px}
+  .fmt-btn,.btn-add-hdr{min-height:40px}
+  .btn-ico{min-height:40px;width:40px;height:40px}
   .btn-add-new{min-height:50px;font-size:14px}
   .mini-btn,.sel-btn{min-height:36px;padding:7px 13px;font-size:12px}
   .ev-mode-btn,.nat-btn{min-height:40px;padding:9px 13px;font-size:12px}
@@ -298,5 +310,6 @@ select{cursor:pointer;min-height:30px}
 ::-webkit-scrollbar-thumb{background:#c8d0e4;border-radius:3px}
 body[data-theme="dark"] ::-webkit-scrollbar-thumb{background:#3a4763}
 /* ダーク時：淡色チップ/警告をなじませる */
-body[data-theme="dark"] .reg-badge{background:#15331f;border-color:#1f6b3d;color:#5fd693}
+body[data-theme="dark"] .reg-badge,body[data-theme="dark"] .reg-mini{background:#15331f;border-color:#1f6b3d;color:#5fd693}
+body[data-theme="dark"] .dup-move{background:#3a1f1d!important;border-color:#7a3b37!important;color:#f0a39f!important}
 body[data-theme="dark"] .dup-warning{background:#3a1f1d;border-color:#7a3b37;color:#f0a39f}

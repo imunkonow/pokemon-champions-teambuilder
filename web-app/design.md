@@ -12,7 +12,7 @@
 
 | フェーズ | 状態 | 内容 |
 |---|---|---|
-| **Prototype** | **実装済(2026-06-18)** | React(CDN+Babel classic runtime)単一HTML + data.js分離。Node不要でGitHub Pages配信。明るめ3カラム/技範囲/選出弱点/努力値入力など全機能動作。`index.html`+`data.js` |
+| **Prototype** | **実装済(2026-06-18 / 2026-06-21拡充)** | React(CDN+Babel classic runtime)単一HTML + data.js分離。Node不要でGitHub Pages配信。明るめ3カラム/技範囲/選出弱点/努力値入力など全機能動作。`index.html`+`data.js`+`style.css`。**2026-06-21**: data.jsを`DEX`マスタ方式に再構築(名前→[図鑑番号,[タイプ],[種族値]]からPOKEMON_TYPES/BASE_STATS/SPRITE_IDSを生成)し Season M-3 の235種を網羅。メガは`MEGA`(実数値変化27種)+`getTypes`/`getBase`の「メガ」strip流用。MOVE_TYPES 265技・メガストーン75/道具167。技重複警告・スマホ向けヘッダー(コンパクト固定枠+ポケ追加ボタン常設)追加。ローカル確認は`.claude/launch.json`(python http.server :3456) |
 | **Static App** | **← 次** | Vite + React + TS + Tailwind へ移行(要Nodeインストール)。スマホレスポンシブ精緻化。localStorage継続 |
 | **Full App** | 将来 | 全ポケモンデータ・EV入力・DB保存・認証など |
 
