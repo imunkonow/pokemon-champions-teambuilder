@@ -15,7 +15,7 @@
 <script src="./data-season.js?v=8"></script>
 <script src="./data-owned.js?v=9"></script>
 <script src="./data.js?v=8"></script>
-<link rel="stylesheet" href="./style.css?v=7">
+<link rel="stylesheet" href="./style.css?v=8">
 </head>
 <body>
 <div id="root"></div>
@@ -148,6 +148,9 @@ const ALL_NAMES   = sortJa(uniq([...Object.keys(POKEMON_TYPES), ...OWNED.map(p=>
 const ALL_MOVES   = sortJa(uniq([...OWNED.flatMap(p=>p.moves), ...Object.keys(MOVE_TYPES)]))
 const ALL_ITEMS   = sortJa(uniq([...ITEMS, ...OWNED.map(p=>p.item)]))
 const ALL_ABIL    = sortJa(uniq(OWNED.map(p=>p.ability)))
+const ALL_POKEMON_WITH_STATS = sortJa(Object.keys(BASE_STATS))
+const ATK_ABILITIES = ['てきおうりょく','ちからずく','テクニシャン','はりきり','すなのちから','もらいび(発動)','かたやぶり','フェアリースキン','スカイスキン','ノーマルスキン','フリーズスキン','エレキスキン']
+const DEF_ABILITIES = ['ふしぎなまもり','ファーコート','マルチスケイル','ふゆう','よびみず','ちくでん','ちょすい','もらいび','ひらいしん','でんきエンジン']
 // 技をタイプ別にグループ化（select の optgroup 用）
 const MOVE_GROUPS = (()=>{
   const g={}
@@ -174,6 +177,18 @@ let EV_MODE = (localStorage.getItem('pc_evmode') in EV_MODES) ? localStorage.get
 function evCfg(){ return EV_MODES[EV_MODE] || EV_MODES.champ }
 function effEV(ev){ return evCfg().conv(ev) }   // 実数値計算用の換算後EV
 const EV_DEFAULT  = 0   // 新規個体は全0スタート（合計66/516 内で割り振る）
+
+// テキスト由来（所持md/インポート）のEVは従来式252表記。現モードのEVスケールへ換算（合計66式など）
+function convEvsToMode(stats){
+  const from=EV_MODES.classic, to=evCfg()
+  return stats.map(s=>({...s, ev:to.inv(from.conv(s.ev||0))}))
+}
+// テキスト由来の個体を現モードへ正規化（EV換算→実数値再計算）。実数値は変わらず合計のみ66式へ
+function normFromText(p){
+  const np=JSON.parse(JSON.stringify(p))
+  np.stats=recalcStats(convEvsToMode(np.stats), np.name, np.nature)
+  return np
+}
 
 // ── 相性計算 ──
 function calcWeak(members){
@@ -333,7 +348,7 @@ function App(){
         const nt=[...t]; let selCnt=nt.filter(p=>p&&p.selected).length
         for(const p of toTeam){
           const idx=nt.indexOf(null); if(idx<0)break
-          const np={...JSON.parse(JSON.stringify(p)),id:Math.random().toString(36).slice(2),selected:selCnt<maxSel}
+          const np={...normFromText(p),id:Math.random().toString(36).slice(2),selected:selCnt<maxSel}
           if(np.selected)selCnt++; nt[idx]=np
         }
         return nt
@@ -358,7 +373,7 @@ function App(){
     <div>
       <header>
         <div className="hdr-main">
-          <h1>⚔ チームビルダー</h1>
+          <h1 title="ポケモンチャンピオンズ チームビルダー">⚔<span className="hdr-title-txt"> チームビルダー</span></h1>
           <span className="fmt-tog" title="ルール切替">
             <button className={'fmt-btn'+(format==='single'?' on':'')} onClick={()=>setFormat('single')} title="シングル 3/6選出">シングル</button>
             <button className={'fmt-btn'+(format==='double'?' on':'')} onClick={()=>setFormat('double')} title="ダブル 4/6選出">ダブル</button>
@@ -366,7 +381,7 @@ function App(){
           <span className="reg-mini" title="レギュレーション M-B（2026-06-17〜09-02）">M-B</span>
         </div>
         <div className="hdr-actions">
-          <button className="btn-add-hdr" onClick={()=>setModal({mode:'add',slot:null,draft:blankDraft()})} title="ポケモンを追加">＋ ポケモン</button>
+          <button className="btn-add-hdr" onClick={()=>setModal({mode:'add',slot:null,draft:blankDraft()})} title="ポケモンを追加">＋<span className="hdr-add-txt"> ポケモン</span></button>
           <button className="btn-ico" onClick={downloadTeam} title="チームをテキスト出力">⬇</button>
           <button className="btn-ico" onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} title="ダークモード切替">{theme==='dark'?'☀':'🌙'}</button>
         </div>
@@ -421,7 +436,7 @@ function App(){
           {anaTab==='selWeak' && <WeakView members={selected} label="選出メンバー" emptyMsg="「選出」ボタンで選出ポケモンをマークしてください" />}
           {anaTab==='coverage' && <CoverageView all={members} sel={selected} />}
           {anaTab==='comp' && <ComplementView all={members} sel={selected} />}
-          {anaTab==='speed' && <SpeedView team={team} evMode={evMode} onNature={(i,n)=>updateSlot(i,{nature:n})} onSpeedEv={updateSpeedEv} />}
+          {anaTab==='speed' && <SpeedView team={team} evMode={evMode} onSpeedEv={updateSpeedEv} />}
           {anaTab==='damage' && <DamageView team={team} evMode={evMode} onNature={(i,n)=>updateSlot(i,{nature:n})} onStatEv={updateStatEv} />}
         </div>
         </div>
@@ -631,6 +646,20 @@ function ScopeTabs({scope,setScope}){
   )
 }
 
+// ── 能力ランク増減（-6〜+6・スピードプラス風） 素早さ/ダメージ共用 ──
+function RankStepper({rank,setRank,label}){
+  const r=Math.max(-6,Math.min(6,rank|0))
+  const ico=r>0?'🔼':r<0?'🔽':'±'
+  return (
+    <span className="rank-tog" title={(label||'能力ランク')+' -6〜+6'}>
+      {label?<span className="rank-lab">{label}</span>:null}
+      <button className="rank-btn" onClick={()=>setRank(Math.max(-6,r-1))} disabled={r<=-6}>−</button>
+      <span className={'rank-val'+(r>0?' up':r<0?' dn':'')}>{ico}{r>0?'+'+r:r}</span>
+      <button className="rank-btn" onClick={()=>setRank(Math.min(6,r+1))} disabled={r>=6}>＋</button>
+    </span>
+  )
+}
+
 // ── 相性補完（1対1：行のポケが列のポケの弱点をどれだけ受けられるか） ──
 function typeMultOn(name, atkIdx){
   const tl=getTypes(name); if(!tl.length)return 1
@@ -682,31 +711,40 @@ function spriteIcon(name){
 }
 
 // ── 素早さ補助 ──
+// evReal=従来式換算後EV（floor(/4)が投資量）。mult=性格補正倍率
 function speedAt(base, evReal, mult){
   const inner=Math.floor((2*base+31+Math.floor(evReal/4))*50/100)
   return Math.floor((inner+5)*mult)
 }
-const spdMax  = b=>speedAt(b,252,1.1)   // 最速(252+補正)
-const spdMin  = b=>speedAt(b,0,1.0)     // 無振り無補正
+// 現EVモードの最大投資を実数値計算用に換算（champ:32→256 / classic:252）
+const evMaxReal  = ()=>evCfg().conv(evCfg().max)
+const spdFastest = b=>speedAt(b,evMaxReal(),1.1)  // 最速(MAX振り+上昇補正)
+const spdQuick   = b=>speedAt(b,evMaxReal(),1.0)  // 準速(MAX振り・無補正)
+const spdSlowest = b=>speedAt(b,0,0.9)            // 最遅(0振り・下降補正)
+const spdMax     = spdFastest                     // 後方互換（プロット図）
+const spdMin     = b=>speedAt(b,0,1.0)            // 無振り無補正
+// 能力ランク倍率（-6〜+6・素早さ/攻撃/防御で共用）
+function rankMult(r){ r=Math.max(-6,Math.min(6,r|0)); return r>=0 ? (2+r)/2 : 2/(2-r) }
 // 最速にする+S性格（物理寄り=ようき / 特殊寄り=おくびょう）
 function natForFast(base){ return (base && base[1]>=base[3]) ? 'ようき' : 'おくびょう' }
 function isFastNat(n){ const m=NATURE_MOD[n]; return m && m[0]===4 }      // +S補正
 function isNeutralSpd(n){ const m=NATURE_MOD[n]; return !m || (m[0]!==4 && m[1]!==4) }
 
-// ── 素早さプロット図（バトメモ風）──
-// 縦軸=素早さ実数値。各選出ポケを列にして「無振り〜最速」を帯で、現在実数値を●、スカーフを○で表示。
+// ── 素早さプロット図（バトメモ風・コンパクト）──
+// 縦軸=素早さ実数値。各選出ポケを列にして「最遅〜最速」を帯で、現在実数値(ランク反映)を●、スカーフを○で表示。
 // 横線=代表ポケ(脅威DB)の最速ラインを名前付きで重ねる。
 function SpeedPlot({rows}){
   if(!rows.length) return null
-  const mins   = rows.map(r=>spdMin(r.baseSpe))
-  const maxs   = rows.map(r=>spdMax(r.baseSpe))
-  const scarfs = rows.map(r=>Math.floor(r.spe*1.5))
+  const cur=r=>(r.eff!=null?r.eff:r.spe)   // 補正・スカーフ込みの現在値
+  const mins   = rows.map(r=>spdSlowest(r.baseSpe))
+  const maxs   = rows.map(r=>spdFastest(r.baseSpe))
+  const curs   = rows.map(cur)
   // 代表ポケ（脅威DB）の最速ライン
   const refsAll=[]
-  ;(THREATS||[]).forEach(nm=>{ const b=getBase(nm); if(b) refsAll.push({lab:nm, val:spdMax(b[5])}) })
-  // 値ドメイン（スカーフ含む。代表ラインも収まるよう拡張）
-  let lo=Math.min(...mins, ...refsAll.map(r=>r.val))
-  let hi=Math.max(...maxs, ...scarfs, ...refsAll.map(r=>r.val))
+  ;(THREATS||[]).forEach(nm=>{ const b=getBase(nm); if(b) refsAll.push({lab:nm, val:spdFastest(b[5])}) })
+  // 値ドメイン（最遅〜最速＋現在値・代表ラインを内包）
+  let lo=Math.min(...mins, ...curs, ...refsAll.map(r=>r.val))
+  let hi=Math.max(...maxs, ...curs, ...refsAll.map(r=>r.val))
   const span=Math.max(1,hi-lo), pad=Math.max(6,Math.round(span*0.05))
   lo-=pad; hi+=pad
   // 重複/近接ラベルを間引き（速度降順で 2 未満差は捨てる）
@@ -714,8 +752,8 @@ function SpeedPlot({rows}){
   refsAll.filter(r=>r.val>=lo&&r.val<=hi).sort((a,b)=>b.val-a.val).forEach(r=>{
     if(!refs.length || refs[refs.length-1].val-r.val>=2) refs.push(r)
   })
-  // レイアウト（viewBox 単位。width:100% で拡縮）
-  const N=rows.length, padL=34, padR=118, padT=12, padB=54, colW=46, plotH=300
+  // レイアウト（viewBox 単位。width:100% で拡縮）— コンパクト化
+  const N=rows.length, padL=30, padR=104, padT=8, padB=42, colW=40, plotH=200
   const plotW=N*colW, W=padL+plotW+padR, H=padT+plotH+padB
   const y=v=>padT+(hi-v)/(hi-lo)*plotH
   const colX=i=>padL+colW*i+colW/2
@@ -723,9 +761,9 @@ function SpeedPlot({rows}){
   const rawStep=span/5, mag=Math.pow(10,Math.floor(Math.log10(rawStep)))
   const step=[1,2,2.5,5,10].map(m=>m*mag).find(s=>span/s<=6)||mag*10
   const ticks=[]; for(let v=Math.ceil(lo/step)*step; v<=hi; v+=step) ticks.push(Math.round(v))
-  // 代表ラインのラベルY（衝突回避：上から最小11px間隔で押し下げ）
+  // 代表ラインのラベルY（衝突回避：上から最小10px間隔で押し下げ）
   let lastLY=-99
-  const refLy=refs.map(r=>{ let ly=y(r.val); if(ly<lastLY+11) ly=lastLY+11; lastLY=ly; return ly })
+  const refLy=refs.map(r=>{ let ly=y(r.val); if(ly<lastLY+10) ly=lastLY+10; lastLY=ly; return ly })
   return (
     <div className="spd-plot">
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" style={{fontFamily:'inherit'}}>
@@ -733,7 +771,7 @@ function SpeedPlot({rows}){
         {ticks.map((t,k)=>(
           <g key={'t'+k}>
             <line x1={padL} y1={y(t)} x2={padL+plotW} y2={y(t)} stroke="var(--line2)" strokeWidth="1"/>
-            <text x={padL-5} y={y(t)+3} textAnchor="end" fontSize="9" fill="var(--faint)">{t}</text>
+            <text x={padL-4} y={y(t)+3} textAnchor="end" fontSize="8" fill="var(--faint)">{t}</text>
           </g>
         ))}
         {/* 代表ポケ横線（橙） */}
@@ -741,86 +779,139 @@ function SpeedPlot({rows}){
           <g key={'r'+k}>
             <line x1={padL} y1={y(r.val)} x2={padL+plotW} y2={y(r.val)} stroke="var(--warn)" strokeWidth="1" strokeDasharray="4 3" opacity="0.7"/>
             <line x1={padL+plotW} y1={y(r.val)} x2={padL+plotW+6} y2={refLy[k]} stroke="var(--warn)" strokeWidth="1" opacity="0.5"/>
-            <text x={padL+plotW+8} y={refLy[k]+3} fontSize="9" fill="var(--warn)" fontWeight="700">{r.lab} {r.val}</text>
+            <text x={padL+plotW+8} y={refLy[k]+3} fontSize="8" fill="var(--warn)" fontWeight="700">{r.lab} {r.val}</text>
           </g>
         ))}
         {/* 各ポケの列 */}
         {rows.map((r,i)=>{
           const x=colX(i), col=TYPE_COLORS[getTypes(r.name)[0]]||'var(--accent)'
-          const yTop=y(spdMax(r.baseSpe)), yBot=y(spdMin(r.baseSpe))
-          const yCur=y(r.spe), yScarf=y(Math.floor(r.spe*1.5))
+          const yTop=y(spdFastest(r.baseSpe)), yBot=y(spdSlowest(r.baseSpe))
+          const c=cur(r), yCur=y(c)
           return (
             <g key={'c'+i}>
-              {/* 無振り〜最速の帯 */}
-              <rect x={x-11} y={yTop} width="22" height={Math.max(2,yBot-yTop)} rx="6" fill={col} opacity="0.16" stroke={col} strokeWidth="1"/>
-              {/* スカーフ位置（○） */}
-              {Math.floor(r.spe*1.5)<=hi && <circle cx={x} cy={yScarf} r="3.2" fill="var(--panel)" stroke={col} strokeWidth="1.5"/>}
+              {/* 最遅〜最速の帯 */}
+              <rect x={x-10} y={yTop} width="20" height={Math.max(2,yBot-yTop)} rx="6" fill={col} opacity="0.16" stroke={col} strokeWidth="1"/>
               {/* 現在実数値（●＋値） */}
-              <line x1={x-12} y1={yCur} x2={x+12} y2={yCur} stroke={col} strokeWidth="2"/>
-              <circle cx={x} cy={yCur} r="4.2" fill={col} stroke="var(--panel)" strokeWidth="1.5"/>
-              <text x={x+14} y={yCur+3} fontSize="10" fill="var(--text)" fontWeight="800">{r.spe}</text>
-              {/* 列ラベル（番号） */}
-              <text x={x} y={padT+plotH+14} textAnchor="middle" fontSize="8" fill="var(--faint)">{r.baseSpe}族</text>
-              <text x={x} y={padT+plotH+26} textAnchor="middle" fontSize="9" fill="var(--muted)" fontWeight="700">{r.name.length>5?r.name.slice(0,4)+'…':r.name}</text>
+              <line x1={x-11} y1={yCur} x2={x+11} y2={yCur} stroke={col} strokeWidth="2"/>
+              <circle cx={x} cy={yCur} r="4" fill={col} stroke="var(--panel)" strokeWidth="1.5"/>
+              <text x={x+13} y={yCur+3} fontSize="9" fill="var(--text)" fontWeight="800">{c}</text>
+              {/* 列ラベル */}
+              <text x={x} y={padT+plotH+13} textAnchor="middle" fontSize="8" fill="var(--faint)">{r.baseSpe}族</text>
+              <text x={x} y={padT+plotH+24} textAnchor="middle" fontSize="8" fill="var(--muted)" fontWeight="700">{r.name.length>5?r.name.slice(0,4)+'…':r.name}</text>
             </g>
           )
         })}
       </svg>
-      <div className="ana-note" style={{margin:'2px 0 0'}}>帯=無振り〜最速の範囲 ／ ●=現在の実数値 ／ ○=こだわりスカーフ(×1.5) ／ 橙破線=代表ポケの最速ライン</div>
+      <div className="ana-note" style={{margin:'2px 0 0'}}>帯=最遅〜最速の範囲 ／ ●=現在の実数値(補正・スカーフ込み) ／ 橙破線=代表ポケの最速ライン</div>
     </div>
   )
 }
 
-// ── 素早さ調整（その場でEV/性格変更）＋基準線 ──
-function SpeedView({team,evMode,onNature,onSpeedEv}){
+// ── 素早さ調整（S補正1.1/1.0/0.9・スカーフ・EV・ランク）──
+function SpeedView({team,evMode,onSpeedEv}){
   const [scope,setScope]=useState('all')
+  const [ranks,setRanks]=useState({})   // slotIdx -> ランク(-6〜+6)
+  const [mults,setMults]=useState({})   // slotIdx -> 性格補正倍率(1.1|1.0|0.9)
+  const [scarfs,setScarfs]=useState({}) // slotIdx -> bool
   const cfg=EV_MODES[evMode]||EV_MODES.champ
   const idx=team.map((p,i)=>({p,i})).filter(x=>x.p && (scope==='sel'?x.p.selected:true) && getBase(x.p.name))
   const rows=idx.map(({p,i})=>{
     const base=getBase(p.name)
-    const spe=p.stats&&p.stats[5]?(p.stats[5].val||0):0
-    return {i, name:p.name, base, baseSpe:base[5], spe, ev:(p.stats[5]&&p.stats[5].ev)||0, nature:p.nature}
-  }).sort((a,b)=>b.spe-a.spe)
+    const ev=(p.stats[5]&&p.stats[5].ev)||0
+    const rank=ranks[i]||0
+    const mult=mults[i]!=null?mults[i]:1.0
+    const scarf=scarfs[i]||false
+    const spe=speedAt(base[5],effEV(ev),mult)
+    const eff=Math.floor(Math.floor(spe*rankMult(rank))*(scarf?1.5:1))
+    return {i,name:p.name,base,baseSpe:base[5],spe,rank,eff,ev,mult,scarf}
+  }).sort((a,b)=>b.eff-a.eff)
+  const setRank=(i,r)=>setRanks(o=>({...o,[i]:Math.max(-6,Math.min(6,r))}))
+  const setMult=(i,m)=>setMults(o=>({...o,[i]:m}))
+  const setScarf=(i,v)=>setScarfs(o=>({...o,[i]:v}))
 
   return (
     <div>
       <ScopeTabs scope={scope} setScope={setScope}/>
       {!rows.length ? <div className="chart-empty">種族値が分かるポケモンを追加すると表示されます</div> : (
       <div>
-        <div className="ana-note">最速/準速をワンタップ・努力値もその場で変更可（実数値が即再計算）。下は基準線で位置を確認。</div>
+        <div className="ana-note">S補正(+S/無/−S)・スカーフ・S努力値スライダー(0〜{cfg.max})・能力ランク(-6〜+6)で●実数値を即反映。</div>
         <div className="spd-edit">
-          {rows.map(r=>{
-            const fast=isFastNat(r.nature), neut=isNeutralSpd(r.nature)
-            return (
-              <div className="spd-erow" key={r.i}>
-                <div className="spd-ehead">
-                  {spriteIcon(r.name)}
-                  <span className="spd-ename">{r.name}</span>
-                  <span className="spd-ecur">素早さ実数値 <b>{r.spe}</b> <i>(スカーフ {Math.floor(r.spe*1.5)})</i></span>
-                </div>
-                <div className="spd-ctrl">
-                  <span className="nat-tog">
-                    <button className={'nat-btn'+(fast?' on':'')} onClick={()=>onNature(r.i,natForFast(r.base))} title="素早さ上昇補正">最速</button>
-                    <button className={'nat-btn'+(neut?' on':'')} onClick={()=>onNature(r.i,'まじめ')} title="無補正">準速</button>
-                  </span>
-                  <select className="spd-ev" value={r.ev} onChange={e=>onSpeedEv(r.i,e.target.value)} title="すばやさ努力値">
-                    {cfg.preset.includes(r.ev)?null:<option value={r.ev}>{r.ev}</option>}
-                    {cfg.preset.map(v=><option key={v} value={v}>S {v}</option>)}
-                  </select>
-                  <span className="spd-range">無振り{spdMin(r.baseSpe)}〜最速{spdMax(r.baseSpe)}</span>
-                </div>
+          {rows.map(r=>(
+            <div className="spd-erow" key={r.i}>
+              <div className="spd-ehead">
+                {spriteIcon(r.name)}
+                <span className="spd-ename">{r.name}</span>
+                <span className="spd-sbase">種{r.baseSpe}</span>
+                <span className="spd-ecur">
+                  <b>{r.eff}</b>
+                  {(r.rank!==0||r.scarf||r.mult!==1.0)?<i className="spd-rk"> ({r.scarf?'スカーフ ':''}{r.mult===1.1?'+S ':r.mult===0.9?'-S ':''}{r.rank!==0?(r.rank>0?'+':'')+r.rank:''})</i>:null}
+                </span>
               </div>
-            )
-          })}
+              <div className="spd-ctrl">
+                <span className="nat-tog">
+                  <button className={'nat-btn'+(r.mult===1.1?' on':'')} onClick={()=>setMult(r.i,1.1)} title="+S性格(ようき/おくびょう)">+S</button>
+                  <button className={'nat-btn'+(r.mult===1.0?' on':'')} onClick={()=>setMult(r.i,1.0)} title="無補正">無</button>
+                  <button className={'nat-btn'+(r.mult===0.9?' on':'')} onClick={()=>setMult(r.i,0.9)} title="-S性格">-S</button>
+                </span>
+                <label className="scarf-tog"><input type="checkbox" checked={r.scarf} onChange={e=>setScarf(r.i,e.target.checked)}/>スカーフ</label>
+                <span className="spd-slider">
+                  <input type="range" min="0" max={cfg.max} step={cfg.step} value={r.ev} onChange={e=>onSpeedEv(r.i,+e.target.value)} title="すばやさ努力値"/>
+                  <span className="spd-evval">S{r.ev}</span>
+                </span>
+                <RankStepper rank={r.rank} setRank={v=>setRank(r.i,v)} />
+              </div>
+              <div className="spd-rangebar">最遅 <b>{spdSlowest(r.baseSpe)}</b> 〜 準速 <b>{spdQuick(r.baseSpe)}</b> 〜 最速 <b>{spdFastest(r.baseSpe)}</b></div>
+            </div>
+          ))}
         </div>
-        <div className="ana-note" style={{margin:'8px 0 4px'}}>素早さプロット（選出{scope==='sel'?'のみ':'＝全チーム'}）</div>
-        <SpeedPlot rows={rows} />
+        <details className="spd-plot-det">
+          <summary>素早さプロット図（補正・スカーフ込み●で表示）</summary>
+          <SpeedPlot rows={rows} />
+        </details>
       </div>)}
     </div>
   )
 }
 
 // ── ダメージ計算ヘルパ（Lv50・シングル・目安） ──
+// 天候→攻撃タイプ倍率
+function weatherAtkMult(w,t){
+  if(w==='sunny'&&t==='ほのお')return 1.5; if(w==='sunny'&&t==='みず')return 0.5
+  if(w==='rain'&&t==='みず')return 1.5;   if(w==='rain'&&t==='ほのお')return 0.5
+  return 1
+}
+// 天候→防御側ステ倍率（砂嵐=岩特防×1.5 / 霰雪=氷特防×1.5）
+function weatherDefMult(w,dTypes,cat){
+  if(cat==='spe'&&w==='sand'&&dTypes.includes('いわ'))return 1.5
+  if(cat==='spe'&&(w==='hail'||w==='snow')&&dTypes.includes('こおり'))return 1.5
+  return 1
+}
+// 攻撃側特性ボーナス
+function atkAbilBonus(abil,cat,atkType,pow,w){
+  if(abil==='てきおうりょく') return {adaptability:true}
+  if(abil==='はりきり'&&cat==='phy') return {aMult:1.5}
+  if(abil==='テクニシャン'&&pow<=60) return {powMult:1.5}
+  if(abil==='ちからずく') return {powMult:1.3}
+  if(abil==='すなのちから'&&w==='sand'&&['いわ','じめん','はがね'].includes(atkType)) return {powMult:1.3}
+  if(abil==='もらいび(発動)'&&atkType==='ほのお') return {aMult:1.5}
+  if(abil==='かたやぶり') return {moldBreaker:true}
+  if(['フェアリースキン','スカイスキン','ノーマルスキン','フリーズスキン','エレキスキン'].includes(abil)) return {powMult:1.2}
+  return {}
+}
+// 防御側特性ボーナス
+function defAbilBonus(abil,cat,atkType){
+  if(abil==='ふしぎなまもり') return {wonderGuard:true}
+  if(abil==='ファーコート'&&cat==='phy') return {furCoat:true}
+  if(abil==='マルチスケイル') return {multiscale:true}
+  if(abil==='ふゆう'&&atkType==='じめん') return {immune:true}
+  if(abil==='よびみず'&&atkType==='みず') return {immune:true}
+  if(abil==='ちくでん'&&atkType==='でんき') return {immune:true}
+  if(abil==='ちょすい'&&atkType==='みず') return {immune:true}
+  if(abil==='もらいび'&&atkType==='ほのお') return {immune:true}
+  if(abil==='ひらいしん'&&atkType==='でんき') return {immune:true}
+  if(abil==='でんきエンジン'&&atkType==='でんき') return {immune:true}
+  return {}
+}
 // タイプ相性（攻撃タイプ→防御タイプ群）の積
 function typeEffMult(atkType, defTypes){
   const ai=TYPES.indexOf(atkType); if(ai<0)return 1
@@ -863,122 +954,280 @@ function atkItemMult(atkPoke, eff){
   if(it==='たつじんのおび'&&eff>=2) return 1.2
   return 1
 }
-// 1発分のダメージ（rand=0.85〜1.00）
-function calcDamage(atkPoke, defPoke, move, atkTera, defTera, rand){
+// 1発分のダメージ（rand=0.85〜1.00・能力ランク -6〜+6・天候・特性対応）
+function calcDamage(atkPoke, defPoke, move, atkTera, defTera, rand, atkRank, defRank, weather, atkAbil, defAbil){
   const mi=moveInfo(move), pow=movePow(move)
   if(!mi||mi[1]==='sta'||!pow) return null
   const cat=mi[1], atkType=mi[0]
-  const A=attackStat(atkPoke,cat), Dd=defenseStat(defPoke,cat)
-  if(!A||!Dd) return null
   const dTypes=defenderTypes(defPoke,defTera)
-  const eff=typeEffMult(atkType,dTypes)
-  const stab=stabMult(atkPoke,atkType,atkTera)
-  if(eff<=0) return {dmg:0,eff,stab,item:1,pow,cat,atkType}
-  const item=atkItemMult(atkPoke,eff)
-  const base=Math.floor(Math.floor(Math.floor((2*50/5+2)*pow*A/Dd)/50)+2)
-  const dmg=Math.max(1,Math.floor(base*stab*eff*item*rand))
-  return {dmg,eff,stab,item,pow,cat,atkType}
+  const typeEff=typeEffMult(atkType,dTypes)
+  // 攻撃側特性
+  const atkB=atkAbilBonus(atkAbil||'',cat,atkType,pow,weather||'none')
+  // 防御側特性（かたやぶりなら無視）
+  const defB=atkB.moldBreaker ? {} : defAbilBonus(defAbil||'',cat,atkType)
+  if(defB.immune) return {dmg:0,eff:0,stab:1,item:1,pow,cat,atkType,immune:true}
+  if(defB.wonderGuard&&typeEff<2) return {dmg:0,eff:typeEff,stab:1,item:1,pow,cat,atkType,immune:true}
+  if(typeEff<=0) return {dmg:0,eff:0,stab:1,item:1,pow,cat,atkType}
+  // 威力補正
+  const finalPow = atkB.powMult ? Math.floor(pow*atkB.powMult) : pow
+  // 攻撃実数値
+  let A=attackStat(atkPoke,cat); if(!A) return null
+  if(atkB.aMult) A=Math.floor(A*atkB.aMult)
+  A=Math.max(1,Math.floor(A*rankMult(atkRank||0)))
+  // 防御実数値
+  let Dd=defenseStat(defPoke,cat); if(!Dd) return null
+  const wdf=weatherDefMult(weather||'none',dTypes,cat)
+  if(wdf!==1) Dd=Math.floor(Dd*wdf)
+  if(defB.furCoat) Dd=Dd*2  // ファーコート=防御×2
+  Dd=Math.max(1,Math.floor(Dd*rankMult(defRank||0)))
+  // STAB
+  const stab = atkB.adaptability
+    ? ((getTypes(atkPoke.name).includes(atkType)||(atkTera&&atkTera===atkType)) ? 2.0 : 1.0)
+    : stabMult(atkPoke,atkType,atkTera)
+  // アイテム・天候
+  const item=atkItemMult(atkPoke,typeEff)
+  const wm=weatherAtkMult(weather||'none',atkType)
+  // base
+  const base=Math.floor(Math.floor(Math.floor((2*50/5+2)*finalPow*A/Dd)/50)+2)
+  let d=base
+  d=Math.floor(d*stab)
+  d=Math.floor(d*typeEff)
+  d=Math.floor(d*wm)
+  if(defB.multiscale) d=Math.floor(d*0.5)
+  d=Math.floor(d*item)
+  const dmg=Math.max(1,Math.floor(d*rand))
+  return {dmg,eff:typeEff,stab,item,pow:finalPow,cat,atkType,wm}
 }
 
-// ── ダメージ計算ビュー（攻撃↔防御を選び、その場でEV/性格を変えて%確認） ──
+// ── ダメージ計算ビュー（全ポケモム選択・6体同時・天候/特性/アイテム対応）──
+const WEATHER_OPTS=[['none','なし'],['sunny','晴れ'],['rain','雨'],['sand','砂嵐'],['hail','霰/雪']]
 function DamageView({team,evMode,onNature,onStatEv}){
   const cfg=EV_MODES[evMode]||EV_MODES.champ
-  const filled=team.map((p,i)=>({p,i})).filter(x=>x.p)
-  const [aIdx,setAIdx]=useState(()=>filled[0]?filled[0].i:-1)
-  const [dIdx,setDIdx]=useState(()=>filled[1]?filled[1].i:(filled[0]?filled[0].i:-1))
+  const teamFilled=team.map((p,i)=>({p,i})).filter(x=>x.p)
+  // 攻撃側
+  const [atkMode,setAtkMode]=useState('team')  // 'team'|'all'
+  const [aTeamIdx,setATeamIdx]=useState(()=>teamFilled[0]?teamFilled[0].i:-1)
+  const [atkName,setAtkName]=useState('')
+  const [atkNature,setAtkNature]=useState('')
+  const [atkEvA,setAtkEvA]=useState(0)
+  const [atkEvC,setAtkEvC]=useState(0)
+  const [atkAbil,setAtkAbil]=useState('')
   const [aTera,setATera]=useState(false)
-  const [dTera,setDTera]=useState(false)
+  const [aRank,setARank]=useState(0)
+  const [customMoves,setCustomMoves]=useState(['','','',''])
+  // 防御側
+  const [defScope,setDefScope]=useState('all')
+  const [dRanks,setDRanks]=useState({})   // di -> rank
+  const [dAbils,setDAbils]=useState({})   // di -> abil
+  const [dTeras,setDTeras]=useState({})   // di -> bool
+  const [dNats,setDNats]=useState({})     // di -> nature
+  const [dEvH,setDEvH]=useState({})       // di -> ev
+  const [dEvB,setDEvB]=useState({})
+  const [dEvD,setDEvD]=useState({})
+  // 天候
+  const [weather,setWeather]=useState('none')
 
-  if(!filled.length) return <div className="chart-empty">チームにポケモンを追加するとダメージ計算ができます</div>
-  const A=(aIdx>=0&&team[aIdx])?team[aIdx]:null
-  const Dp=(dIdx>=0&&team[dIdx])?team[dIdx]:null
-  if(!A||!Dp) return <div className="chart-empty">攻撃側・防御側を選び直してください</div>
+  if(!teamFilled.length) return <div className="chart-empty">チームにポケモンを追加するとダメージ計算ができます</div>
 
-  const aTeraType=aTera?(A.teraType||''):''
-  const dTeraType=dTera?(Dp.teraType||''):''
-  const defHP=(Dp.stats&&Dp.stats[0])?(Dp.stats[0].val||0):0
-  const moves=(A.moves||[]).filter(m=>m&&moveInfo(m)&&moveInfo(m)[1]!=='sta')
-
-  const evSel=(slotIdx,statIdx,label)=>{
-    const ev=(team[slotIdx].stats[statIdx]&&team[slotIdx].stats[statIdx].ev)||0
-    return (
-      <label className="dmg-ev"><span>{label}</span>
-        <select value={ev} onChange={e=>onStatEv(slotIdx,statIdx,e.target.value)}>
-          {cfg.preset.includes(ev)?null:<option value={ev}>{ev}</option>}
-          {cfg.preset.map(v=><option key={v} value={v}>{v}</option>)}
-        </select>
-      </label>
-    )
+  // 攻撃側ポケモムを解決
+  let A=null
+  if(atkMode==='team'){
+    A=(aTeamIdx>=0&&team[aTeamIdx])?team[aTeamIdx]:null
+  } else if(atkName){
+    const base=getBase(atkName)
+    if(base){
+      const stats=base.map((b,i)=>({
+        val:calcStat(b,i===1?atkEvA:i===3?atkEvC:0,i,atkNature),
+        ev:i===1?atkEvA:i===3?atkEvC:0
+      }))
+      A={name:atkName,nature:atkNature,item:'',teraType:'',stats,moves:[...customMoves]}
+    }
   }
-  const natSel=slotIdx=>(
-    <select className="dmg-nat" value={team[slotIdx].nature||''} onChange={e=>onNature(slotIdx,e.target.value)}>
-      <option value="">無補正</option>
-      {ALL_NATURES.map(n=>{const nm=NATURE_MOD[n];return <option key={n} value={n}>{n}{nm?` (+${EV_LABELS[nm[0]+1]}/-${EV_LABELS[nm[1]+1]})`:''}</option>})}
-    </select>
-  )
-  const pick=(val,set)=>(
-    <select className="dmg-pick" value={val} onChange={e=>set(+e.target.value)}>
-      {filled.map(({p,i})=><option key={i} value={i}>{p.name}</option>)}
-    </select>
-  )
+
+  // 防御側リスト（チームから。各ポケのステはEVスライダーで上書き可能）
+  const baseDefs = defScope==='sel' ? team.filter(p=>p&&p.selected) : team.filter(Boolean)
+  const defPokes = baseDefs.map((p,di)=>{
+    const nat=dNats[di]!=null?dNats[di]:p.nature
+    const hev=dEvH[di]!=null?dEvH[di]:(p.stats&&p.stats[0]?p.stats[0].ev:0)
+    const bev=dEvB[di]!=null?dEvB[di]:(p.stats&&p.stats[2]?p.stats[2].ev:0)
+    const dev=dEvD[di]!=null?dEvD[di]:(p.stats&&p.stats[4]?p.stats[4].ev:0)
+    const base=getBase(p.name)
+    if(!base) return {...p,_di:di}
+    const stats=p.stats.map((s,k)=>{
+      if(k===0) return {...s,val:calcStat(base[0],hev,0,nat),ev:hev}
+      if(k===2) return {...s,val:calcStat(base[2],bev,2,nat),ev:bev}
+      if(k===4) return {...s,val:calcStat(base[4],dev,4,nat),ev:dev}
+      return {...s,val:calcStat(base[k],s.ev||0,k,nat)}
+    })
+    return {...p,nature:nat,stats,_di:di}
+  })
+
+  const aTeraType=aTera?(A?.teraType||''):''
+  const atkMoves = atkMode==='team'
+    ? (A?.moves||[]).filter(m=>m&&moveInfo(m)&&moveInfo(m)[1]!=='sta')
+    : customMoves.filter(m=>m&&moveInfo(m)&&moveInfo(m)[1]!=='sta')
+
+  // 攻撃側EVスライダー（チームモード）
+  const atkEvSel=(statIdx,label)=>{
+    if(!A||atkMode!=='team') return null
+    const ev=(A.stats[statIdx]&&A.stats[statIdx].ev)||0
+    return <label className="dmg-ev"><span>{label}{ev}</span><input type="range" min="0" max={cfg.max} step={cfg.step} value={ev} onChange={e=>onStatEv(aTeamIdx,statIdx,+e.target.value)}/></label>
+  }
 
   return (
     <div>
-      <div className="ana-note">攻撃→防御のダメージ目安（Lv50・個体値31・乱数0.85〜1.00）。EV/性格はその場変更で即再計算。STAB・相性・こだわり/メガネ/いのちのたま/おび/チョッキ/きせき・テラスを反映。</div>
-      <div className="dmg-head">
-        <div className="dmg-side">
-          <div className="dmg-role atk">攻撃</div>{spriteIcon(A.name)}{pick(aIdx,setAIdx)}
-        </div>
-        <button className="dmg-swap" title="攻守入れ替え" onClick={()=>{const a=aIdx;setAIdx(dIdx);setDIdx(a)}}>⇅</button>
-        <div className="dmg-side">
-          <div className="dmg-role def">防御</div>{spriteIcon(Dp.name)}{pick(dIdx,setDIdx)}
-        </div>
+      {/* 天候 */}
+      <div className="dmg-weather-row">
+        <span className="dmg-section-lbl">天候</span>
+        {WEATHER_OPTS.map(([w,lbl])=>(
+          <button key={w} className={'nat-btn'+(weather===w?' on':'')} onClick={()=>setWeather(w)}>{lbl}</button>
+        ))}
       </div>
 
-      <div className="dmg-ctrls">
-        <div className="dmg-ctrl-col">
-          <div className="dmg-ctrl-h">攻撃 {A.name}</div>
-          {natSel(aIdx)}
-          <div className="dmg-evs">{evSel(aIdx,1,'A')}{evSel(aIdx,3,'C')}</div>
-          {A.teraType?<label className="dmg-tera"><input type="checkbox" checked={aTera} onChange={e=>setATera(e.target.checked)}/>テラス{A.teraType}</label>:null}
+      {/* 攻撃側 */}
+      <div className="dmg-atk-box">
+        <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',marginBottom:6}}>
+          <span className="dmg-role atk">攻撃</span>
+          <span className="nat-tog">
+            <button className={'nat-btn'+(atkMode==='team'?' on':'')} onClick={()=>setAtkMode('team')}>チームから</button>
+            <button className={'nat-btn'+(atkMode==='all'?' on':'')} onClick={()=>setAtkMode('all')}>全ポケから</button>
+          </span>
+          {atkMode==='team' ? (
+            <>{spriteIcon(A?.name||'')}
+            <select className="dmg-pick" value={aTeamIdx} onChange={e=>setATeamIdx(+e.target.value)}>
+              {teamFilled.map(({p,i})=><option key={i} value={i}>{p.name}</option>)}
+            </select></>
+          ) : (
+            <>{spriteIcon(atkName)}
+            <OptSelect value={atkName} options={ALL_POKEMON_WITH_STATS} placeholder="ポケモンを選択" onChange={v=>setAtkName(v)} style={{width:130}} /></>
+          )}
+          {A?.teraType && <label className="dmg-tera"><input type="checkbox" checked={aTera} onChange={e=>setATera(e.target.checked)}/>テラス{A.teraType}</label>}
         </div>
-        <div className="dmg-ctrl-col">
-          <div className="dmg-ctrl-h">防御 {Dp.name} <span className="dmg-hp">HP{defHP}</span></div>
-          {natSel(dIdx)}
-          <div className="dmg-evs">{evSel(dIdx,0,'H')}{evSel(dIdx,2,'B')}{evSel(dIdx,4,'D')}</div>
-          {Dp.teraType?<label className="dmg-tera"><input type="checkbox" checked={dTera} onChange={e=>setDTera(e.target.checked)}/>テラス{Dp.teraType}</label>:null}
-        </div>
-      </div>
-
-      {!moves.length ? <div className="chart-empty">攻撃側に攻撃技を設定してください</div> : (
-      <div className="dmg-results">
-        {moves.map((mv,k)=>{
-          const lo=calcDamage(A,Dp,mv,aTeraType,dTeraType,0.85)
-          const hi=calcDamage(A,Dp,mv,aTeraType,dTeraType,1.00)
-          const mi=moveInfo(mv)
-          if(!lo||!hi) return <div className="dmg-row" key={k}><div className="dmg-r1"><span className="mdot" style={{background:mi?TYPE_COLORS[mi[0]]:'#ccc'}}></span><span className="dmg-mv">{mv}</span><span className="dmg-na">威力データ未登録</span></div></div>
-          const pctLo=defHP?lo.dmg/defHP*100:0, pctHi=defHP?hi.dmg/defHP*100:0
-          const ko=lo.dmg>0?Math.ceil(defHP/lo.dmg):99
-          const koTxt=lo.eff<=0?'無効':(lo.dmg>=defHP?'確定1発':(hi.dmg>=defHP?'乱数1発':'確定'+ko+'発'))
-          const cls=pctLo>=100?'k1':pctHi>=100?'kr':pctHi>=50?'kh':'kl'
-          return (
-            <div className="dmg-row" key={k}>
-              <div className="dmg-r1">
-                <span className="mdot" style={{background:TYPE_COLORS[lo.atkType]}}></span>
-                <span className="dmg-mv">{mv}</span>
-                <span className="dmg-pow">威{lo.pow}/{lo.cat==='phy'?'物':'特'}</span>
-                {lo.eff!==1 && <span className={'dmg-eff'+(lo.eff>1?' se':' nv')}>×{lo.eff}</span>}
-                <span className={'dmg-ko '+cls}>{koTxt}</span>
-              </div>
-              {lo.eff>0 && (
-              <div className="dmg-r2">
-                <div className="dmg-bar"><i className={cls} style={{width:Math.min(pctHi,100)+'%'}}></i></div>
-                <span className="dmg-num">{lo.dmg}〜{hi.dmg} <b>({pctLo.toFixed(1)}〜{pctHi.toFixed(1)}%)</b></span>
-              </div>)}
+        {A && (
+          <div className="dmg-atk-ctrl">
+            <div className="dmg-evs">
+              {atkMode==='team' ? (
+                <>{atkEvSel(1,'A')}{atkEvSel(3,'C')}</>
+              ) : (
+                <>
+                  <label className="dmg-ev"><span>A{atkEvA}</span><input type="range" min="0" max={cfg.max} step={cfg.step} value={atkEvA} onChange={e=>setAtkEvA(+e.target.value)}/></label>
+                  <label className="dmg-ev"><span>C{atkEvC}</span><input type="range" min="0" max={cfg.max} step={cfg.step} value={atkEvC} onChange={e=>setAtkEvC(+e.target.value)}/></label>
+                </>
+              )}
             </div>
-          )
-        })}
-      </div>)}
+            <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center',marginTop:4}}>
+              {atkMode==='team' ? (
+                <select className="dmg-nat" value={A.nature||''} onChange={e=>onNature(aTeamIdx,e.target.value)}>
+                  <option value="">無補正</option>
+                  {ALL_NATURES.map(n=>{const nm=NATURE_MOD[n];return <option key={n} value={n}>{n}{nm?` (+${EV_LABELS[nm[0]+1]}/-${EV_LABELS[nm[1]+1]})`:''}</option>})}
+                </select>
+              ) : (
+                <select className="dmg-nat" value={atkNature} onChange={e=>setAtkNature(e.target.value)}>
+                  <option value="">無補正</option>
+                  {ALL_NATURES.map(n=>{const nm=NATURE_MOD[n];return <option key={n} value={n}>{n}{nm?` (+${EV_LABELS[nm[0]+1]}/-${EV_LABELS[nm[1]+1]})`:''}</option>})}
+                </select>
+              )}
+              <select className="dmg-nat" value={atkAbil} onChange={e=>setAtkAbil(e.target.value)} title="攻撃側特性">
+                <option value="">特性なし</option>
+                {ATK_ABILITIES.map(a=><option key={a} value={a}>{a}</option>)}
+              </select>
+              <RankStepper rank={aRank} setRank={setARank} label="攻撃ランク"/>
+            </div>
+          </div>
+        )}
+        {atkMode==='all' && (
+          <div className="dmg-custom-moves">
+            {[0,1,2,3].map(k=>(
+              <MoveSelect key={k} value={customMoves[k]||''} onChange={v=>setCustomMoves(m=>{const nm=[...m];nm[k]=v;return nm})} placeholder={'技'+(k+1)}/>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 防御側スコープ */}
+      <div style={{display:'flex',alignItems:'center',gap:8,margin:'6px 0 4px'}}>
+        <span className="dmg-role def">防御</span>
+        <ScopeTabs scope={defScope} setScope={setDefScope}/>
+      </div>
+
+      {!A || !atkMoves.length ? (
+        <div className="chart-empty">{!A?'攻撃側を選択してください':'攻撃技を設定してください'}</div>
+      ) : !defPokes.length ? (
+        <div className="chart-empty">チームにポケモンを追加してください</div>
+      ) : (
+        <div className="dmg-grid-wrap">
+          {/* 防御側ヘッダー */}
+          <div className="dmg-grid-hdr">
+            <div className="dmg-mv-lbl-cell"></div>
+            {defPokes.map((Dp,di)=>{
+              const defHP=(Dp.stats&&Dp.stats[0])?(Dp.stats[0].val||0):0
+              const hev=dEvH[di]!=null?dEvH[di]:(baseDefs[di]?.stats?.[0]?.ev||0)
+              const bev=dEvB[di]!=null?dEvB[di]:(baseDefs[di]?.stats?.[2]?.ev||0)
+              const dev=dEvD[di]!=null?dEvD[di]:(baseDefs[di]?.stats?.[4]?.ev||0)
+              const nat=dNats[di]!=null?dNats[di]:baseDefs[di]?.nature||''
+              return (
+                <div key={di} className="dmg-def-hdr-cell">
+                  <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+                    {spriteIcon(Dp.name)}
+                    <span className="dmg-defname">{Dp.name}</span>
+                    <span className="dmg-hp">HP{defHP}</span>
+                  </div>
+                  <select className="dmg-nat" value={nat} onChange={e=>setDNats(v=>({...v,[di]:e.target.value}))}>
+                    <option value="">無補正</option>
+                    {ALL_NATURES.map(n=>{const nm=NATURE_MOD[n];return <option key={n} value={n}>{n}{nm?` +${EV_LABELS[nm[0]+1]}`:''}</option>})}
+                  </select>
+                  <div className="dmg-evs">
+                    <label className="dmg-ev"><span>H{hev}</span><input type="range" min="0" max={cfg.max} step={cfg.step} value={hev} onChange={e=>setDEvH(v=>({...v,[di]:+e.target.value}))}/></label>
+                    <label className="dmg-ev"><span>B{bev}</span><input type="range" min="0" max={cfg.max} step={cfg.step} value={bev} onChange={e=>setDEvB(v=>({...v,[di]:+e.target.value}))}/></label>
+                    <label className="dmg-ev"><span>D{dev}</span><input type="range" min="0" max={cfg.max} step={cfg.step} value={dev} onChange={e=>setDEvD(v=>({...v,[di]:+e.target.value}))}/></label>
+                  </div>
+                  <select className="dmg-defabil" value={dAbils[di]||''} onChange={e=>setDAbils(v=>({...v,[di]:e.target.value}))} title="防御側特性">
+                    <option value="">特性なし</option>
+                    {DEF_ABILITIES.map(a=><option key={a} value={a}>{a}</option>)}
+                  </select>
+                  <RankStepper rank={dRanks[di]||0} setRank={r=>setDRanks(v=>({...v,[di]:r}))} label="防御ランク"/>
+                  {Dp.teraType&&<label className="dmg-tera"><input type="checkbox" checked={dTeras[di]||false} onChange={e=>setDTeras(v=>({...v,[di]:e.target.checked}))}/>テラス{Dp.teraType}</label>}
+                </div>
+              )
+            })}
+          </div>
+          {/* 各技 × 各防御ポケ */}
+          {atkMoves.map(mv=>{
+            const mi=moveInfo(mv)
+            return (
+              <div className="dmg-grid-row" key={mv}>
+                <div className="dmg-mv-lbl-cell">
+                  <span className="mdot" style={{background:mi?TYPE_COLORS[mi[0]]:'#ccc'}}></span>
+                  <span className="dmg-mv">{mv}</span>
+                  {mi&&<span className="dmg-pow">威{movePow(mv)||'?'}/{mi[1]==='phy'?'物':'特'}</span>}
+                </div>
+                {defPokes.map((Dp,di)=>{
+                  const dTera=(dTeras[di]&&Dp.teraType)||''
+                  const dRank=dRanks[di]||0
+                  const dAbil=dAbils[di]||''
+                  const defHP=(Dp.stats&&Dp.stats[0])?(Dp.stats[0].val||0):0
+                  const lo=calcDamage(A,Dp,mv,aTeraType,dTera,0.85,aRank,dRank,weather,atkAbil,dAbil)
+                  const hi=calcDamage(A,Dp,mv,aTeraType,dTera,1.00,aRank,dRank,weather,atkAbil,dAbil)
+                  if(!lo||!hi) return <div className="dmg-cell dmg-na" key={di}>データ不足</div>
+                  if(lo.immune||(lo.eff<=0&&lo.dmg===0)) return <div className="dmg-cell dmg-immune" key={di}>無効</div>
+                  const pctHi=defHP?hi.dmg/defHP*100:0
+                  const pctLo=defHP?lo.dmg/defHP*100:0
+                  const cls=pctLo>=100?'k1':pctHi>=100?'kr':pctHi>=50?'kh':'kl'
+                  const koTxt=lo.dmg>=defHP?'確1':hi.dmg>=defHP?'乱1':(defHP&&lo.dmg>0?Math.ceil(defHP/lo.dmg)+'発':'?')
+                  return (
+                    <div className="dmg-cell" key={di}>
+                      <span className={'dmg-ko '+cls}>{koTxt}</span>
+                      <div className="dmg-bar"><i className={cls} style={{width:Math.min(pctHi,100)+'%'}}></i></div>
+                      <span className="dmg-pct">{pctLo.toFixed(0)}〜{pctHi.toFixed(0)}%</span>
+                      <span className="dmg-absnum">{lo.dmg}〜{hi.dmg}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -1048,7 +1297,7 @@ function SuggestTab({team,onAdd,onAddMany}){
     return suggestFill(pool, members, emptyCount)
   },[mode,team,emptyCount])
   const toBuild=pk=>{
-    if(mode==='mine'){ const o=OWNED.find(p=>p.name===pk.name); if(o) return o }
+    if(mode==='mine'){ const o=OWNED.find(p=>p.name===pk.name); if(o) return normFromText(o) }
     const b=blankDraft(pk.name); b.item=pk.item; return b
   }
   return (
@@ -1127,7 +1376,7 @@ function MineTab({team,onAdd,onRemove}){
               {vs.map((v,vi)=>{
                 const inTeam=team.some(s=>s&&s.raw===v.raw)
                 return (
-                  <div key={vi} className={'li'+(inTeam?' in':'')} style={{marginLeft:8}} onClick={()=>inTeam?onRemove(v.raw):onAdd(v)} title={inTeam?'もう一度クリックで枠から外す':'クリックで追加'}>
+                  <div key={vi} className={'li'+(inTeam?' in':'')} style={{marginLeft:8}} onClick={()=>inTeam?onRemove(v.raw):onAdd(normFromText(v))} title={inTeam?'もう一度クリックで枠から外す':'クリックで追加'}>
                     <div className="li-info">
                       <div className="li-sub">@ {v.item||'—'} ／ {v.nature||'—'}{inTeam?<span className="li-check"> ✓ 追加済(クリックで解除)</span>:''}</div>
                       <div className="li-sub" style={{color:'var(--faint)'}}>{v.moves.join(' / ')}</div>
@@ -1166,7 +1415,7 @@ function ImportTab({pool,team,text,setText,onParse,onAdd,doImport}){
         {!pool.length?<div className="li-empty">解析した個体がここに並びます</div>:pool.map((p,i)=>{
           const inTeam=team.some(s=>s&&s.raw===p.raw), url=getSpriteUrl(p.name)
           return (
-            <div key={i} className={'li'+(inTeam?' in':'')} onClick={()=>!inTeam&&onAdd(p)} title={inTeam?'追加済み':'クリックで追加'}>
+            <div key={i} className={'li'+(inTeam?' in':'')} onClick={()=>!inTeam&&onAdd(normFromText(p))} title={inTeam?'追加済み':'クリックで追加'}>
               {url?<img className="li-sprite" src={url} alt="" onError={e=>imgFallback(e,p.name)}/>:<div className="li-sprite" style={{fontSize:16,display:'flex',alignItems:'center',justifyContent:'center'}}>🎮</div>}
               <div className="li-info"><div className="li-name">{p.name}{inTeam?<span className="li-check"> ✓</span>:''}</div><div className="li-sub">@ {p.item||'—'} ／ {p.nature||'—'}</div></div>
             </div>
@@ -1204,7 +1453,7 @@ function EditModal({modal,evMode,onClose,onSave}){
     if(idx<0)return
     const t=tmpls[idx]
     setD(p=>({...p,item:t.item,teraType:t.teraType,ability:t.ability,nature:t.nature,
-      stats:JSON.parse(JSON.stringify(t.stats)),moves:[...t.moves,'','','',''].slice(0,4)}))
+      stats:recalcStats(convEvsToMode(t.stats),p.name,t.nature),moves:[...t.moves,'','','',''].slice(0,4)}))
   }
 
   return (
