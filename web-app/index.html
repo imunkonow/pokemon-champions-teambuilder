@@ -9,7 +9,12 @@
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="./data.js?v=7"></script>
+<script src="./data-master.js?v=8"></script>
+<script src="./data-pokemon.js?v=8"></script>
+<script src="./data-moves.js?v=8"></script>
+<script src="./data-season.js?v=8"></script>
+<script src="./data-owned.js?v=8"></script>
+<script src="./data.js?v=8"></script>
 <link rel="stylesheet" href="./style.css?v=7">
 </head>
 <body>
@@ -160,9 +165,9 @@ const EV_KEYS     = ['H','A','B','C','D','S']
 // classic: 従来式換算（各ステ最大252 / 合計516）。チャンピオンズ実数値を従来努力値に当てはめると各ステ+1ぶん高く、合計は516になる（出典: yakkun.com/ch/stat_points.htm）
 // conv: その値を実数値計算用(従来式EV相当)に換算 / inv: 実数値相当→このモードのEV値へ逆換算（モード切替時に投資量を保つ）
 const EV_MODES = {
-  champ:   {label:'ポケモンチャンピオンズ式', max:32,  total:66,  step:1,  preset:[0,4,8,12,16,20,24,28,32],
+  champ:   {label:'ポケモンチャンピオンズ式', max:32,  total:66,  step:1,  preset:[0,2,4,8,12,16,20,24,28,32],
             conv:ev=>Math.min((ev||0)*8,256), inv:re=>Math.min(Math.round((re||0)/8),32)},
-  classic: {label:'従来式 252',           max:252, total:516, step:4,  preset:[0,4,16,32,52,100,124,156,196,252],
+  classic: {label:'従来式 252',           max:252, total:516, step:4,  preset:[0,4,12,16,32,52,100,124,156,196,252],
             conv:ev=>Math.min(ev||0,252),       inv:re=>Math.min(Math.round((re||0)/4)*4,252)},
 }
 let EV_MODE = (localStorage.getItem('pc_evmode') in EV_MODES) ? localStorage.getItem('pc_evmode') : 'champ'
@@ -296,6 +301,7 @@ function App(){
     })
   }
   function clearSelection(){ setTeam(t=>t.map(p=>p?{...p,selected:false}:p)) }
+  function clearTeam(){ if(window.confirm('6体を全て削除しますか？'))setTeam(Array(6).fill(null)) }
   function removeByRaw(raw){ setTeam(t=>t.map(p=>p&&p.raw===raw?null:p)) }
   function saveDraft(draft,slot){
     const p={...draft}; p.raw=buildRaw(p)
@@ -379,6 +385,7 @@ function App(){
               </span>
               <span style={{color:'var(--muted)',fontWeight:600}}>選出 {selected.length}/{maxSel}</span>
               {selected.length>0 && <button className="mini-btn" onClick={clearSelection} title="選出マークを全て解除">選出クリア</button>}
+              {team.some(Boolean) && <button className="mini-btn" onClick={clearTeam} title="6体を全て空にする" style={{color:'var(--danger,#c0392b)'}}>チームクリア</button>}
             </span>
           </div>
           {(dup.dn.length||dup.din.length)?(
