@@ -13,7 +13,7 @@
 <script src="./data-pokemon.js?v=8"></script>
 <script src="./data-moves.js?v=8"></script>
 <script src="./data-season.js?v=8"></script>
-<script src="./data-owned.js?v=8"></script>
+<script src="./data-owned.js?v=9"></script>
 <script src="./data.js?v=8"></script>
 <link rel="stylesheet" href="./style.css?v=7">
 </head>
@@ -488,12 +488,19 @@ function OptSelect({value,onChange,options,placeholder,className,style}){
     </>
   )
 }
-// ── 技セレクト（input+datalist：タイプを副表示。打鍵で絞り込み） ──
+// ── 技セレクト（select+optgroup：タイプ別グループ。選択肢を常に表示） ──
 function MoveSelect({value,onChange,className,placeholder,style}){
   const v=value||''
   return (
-    <input className={(className||'')+' combo-in'} style={style} list="dl-moves" value={v} placeholder={placeholder||'技を選択'}
-      onClick={e=>e.stopPropagation()} onChange={e=>onChange(e.target.value)} />
+    <select className={className||''} style={style} value={v}
+      onClick={e=>e.stopPropagation()} onChange={e=>onChange(e.target.value)}>
+      <option value="">{placeholder||'技を選択'}</option>
+      {MOVE_GROUPS.map(([type,moves])=>(
+        <optgroup key={type} label={type}>
+          {moves.map(m=><option key={m} value={m}>{m}</option>)}
+        </optgroup>
+      ))}
+    </select>
   )
 }
 
