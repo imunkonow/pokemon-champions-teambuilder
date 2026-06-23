@@ -12,4 +12,6 @@
 
 ## 使用可能アイテム
 
+→ [season/item.md](season/item.md)（きのみ・タイプ強化・汎用）  
+→ [season/megastone.md](season/megastone.md)（メガストーン）
 

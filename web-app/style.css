@@ -143,6 +143,10 @@ header h1{font-size:14px;font-weight:800;color:var(--accent);letter-spacing:.02e
 .spd-ev{background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:3px 5px;font-size:11px}
 .spd-ev:focus{outline:none;border-color:var(--accent)}
 .spd-range{font-size:9px;color:var(--faint)}
+/* 素早さプロット図（バトメモ風 SVG） */
+.spd-plot{width:100%;border:1px solid var(--line);border-radius:9px;background:var(--panel2);padding:8px 6px 6px;overflow-x:auto}
+.spd-plot svg{display:block;min-width:300px}
+.spd-plot text{font-family:inherit}
 
 /* 素早さ基準線 */
 .bench{border:1px solid var(--line);border-radius:9px;overflow:hidden}
@@ -151,9 +155,59 @@ header h1{font-size:14px;font-weight:800;color:var(--accent);letter-spacing:.02e
 .bench-row.mine{background:var(--hover);font-weight:800}
 .bench-row.mine .bench-lab{color:var(--accent)}
 .bench-row.bnk{color:var(--muted);background:#fbfcfe}
+.bench-row.thr{background:#fff6ec;color:var(--warn);font-weight:700}
+.bench-row.thr .bench-lab{color:var(--warn)}
+.bench-row.thr .bench-val{color:var(--warn)}
+body[data-theme="dark"] .bench-row.bnk{background:#171e2d}
+body[data-theme="dark"] .bench-row.thr{background:#2e2316}
 .bench-lab{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bench-val{font-weight:700;flex-shrink:0}
 .bench-row.mine .bench-val{color:var(--accent)}
+
+/* ── ダメージ計算 ── */
+.dmg-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.dmg-side{flex:1;min-width:0;display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:6px 8px}
+.dmg-side img{width:26px;height:26px;image-rendering:pixelated;flex-shrink:0}
+.dmg-role{font-size:10px;font-weight:800;padding:2px 6px;border-radius:5px;color:#fff;flex-shrink:0}
+.dmg-role.atk{background:var(--bad)}
+.dmg-role.def{background:var(--accent)}
+.dmg-pick{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:4px 4px;font-size:12px;font-weight:700}
+.dmg-swap{background:var(--panel2);border:1px solid var(--line);color:var(--accent);border-radius:7px;width:30px;height:30px;font-size:15px;cursor:pointer;flex-shrink:0}
+.dmg-swap:hover{background:var(--hover)}
+.dmg-ctrls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+@media(max-width:480px){.dmg-ctrls{grid-template-columns:1fr}}
+.dmg-ctrl-col{border:1px solid var(--line);border-radius:9px;padding:8px;background:var(--panel2);display:flex;flex-direction:column;gap:6px}
+.dmg-ctrl-h{font-size:11px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dmg-hp{color:var(--muted);font-weight:600;font-size:10px}
+.dmg-nat{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:4px 5px;font-size:11px}
+.dmg-evs{display:flex;gap:5px;flex-wrap:wrap}
+.dmg-ev{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);font-weight:700}
+.dmg-ev select{background:var(--panel);border:1px solid var(--line);border-radius:5px;color:var(--text);padding:3px 4px;font-size:11px}
+.dmg-tera{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);font-weight:600;cursor:pointer}
+.dmg-tera input{cursor:pointer}
+.dmg-results{display:flex;flex-direction:column;gap:7px}
+.dmg-row{border:1px solid var(--line);border-radius:9px;padding:7px 9px;background:var(--panel2)}
+.dmg-r1{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px}
+.dmg-mv{font-weight:800;font-size:12px}
+.dmg-pow{font-size:9px;color:var(--faint);font-weight:700}
+.dmg-na{font-size:10px;color:var(--faint)}
+.dmg-eff{font-size:10px;font-weight:800;padding:1px 5px;border-radius:4px}
+.dmg-eff.se{background:#fdeceb;color:var(--bad)}
+.dmg-eff.nv{background:#eef6ff;color:var(--accent)}
+.dmg-ko{margin-left:auto;font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px}
+.dmg-ko.k1{background:var(--bad);color:#fff}
+.dmg-ko.kr{background:var(--warn);color:#fff}
+.dmg-ko.kh{background:#fff6df;color:#b07d11}
+.dmg-ko.kl{background:var(--line2);color:var(--muted)}
+.dmg-r2{display:flex;align-items:center;gap:8px}
+.dmg-bar{flex:1;height:9px;background:var(--line2);border-radius:5px;overflow:hidden;min-width:60px}
+.dmg-bar i{display:block;height:100%;border-radius:5px}
+.dmg-bar i.k1{background:var(--bad)}
+.dmg-bar i.kr{background:var(--warn)}
+.dmg-bar i.kh{background:var(--accent2)}
+.dmg-bar i.kl{background:var(--good)}
+.dmg-num{font-size:11px;color:var(--text);white-space:nowrap}
+.dmg-num b{color:var(--accent)}
 
 /* カード内インライン編集 */
 .pitem-in{border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:11px;border-radius:5px;padding:3px 6px;width:calc(100% - 14px);font-family:inherit;cursor:pointer}
@@ -165,6 +219,10 @@ header h1{font-size:14px;font-weight:800;color:var(--accent);letter-spacing:.02e
 .pmove-in::placeholder,.pitem-in::placeholder{color:var(--faint)}
 /* 全セレクトに統一の操作感（クリックで必ず開く・指で押しやすい最低高） */
 select{cursor:pointer;min-height:30px}
+/* 絞り込みコンボボックス（input+datalist）。打鍵で候補が絞れる。▾で候補ありを示唆 */
+.combo-in{background-image:linear-gradient(45deg,transparent 50%,var(--faint) 50%),linear-gradient(135deg,var(--faint) 50%,transparent 50%);background-position:calc(100% - 9px) center,calc(100% - 5px) center;background-size:4px 4px,4px 4px;background-repeat:no-repeat;padding-right:18px!important;cursor:text}
+.combo-in:focus{background-image:none;padding-right:8px}
+input.pitem-in.combo-in{width:100%}
 
 /* 使い方ヒント */
 .tip{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:var(--accent2);color:#fff;font-size:10px;font-weight:800;line-height:1;cursor:help;flex-shrink:0;position:relative;user-select:none}
