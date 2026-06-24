@@ -45,6 +45,23 @@ header h1{font-size:14px;font-weight:800;color:var(--accent);letter-spacing:.02e
   .side-col{position:static}
 }
 
+/* ── 目次ナビ（スマホ=セクション切替でスクロール最小化 / PC=アンカー移動） ── */
+.secnav{display:flex;gap:6px;padding:6px 12px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.secnav-btn{flex:1;min-width:64px;background:var(--panel2);border:1px solid var(--line);color:var(--muted);font-size:12px;font-weight:700;padding:7px 8px;border-radius:8px;cursor:pointer;transition:.12s;font-family:inherit;white-space:nowrap}
+.secnav-btn:hover{color:var(--accent);border-color:var(--accent2)}
+.secnav-btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.secnav-btn.help{flex:0 0 auto;color:var(--accent)}
+@media(hover:none){.secnav-btn{min-height:42px;font-size:13px}}
+/* スマホは選択セクションのみ表示（スクロール量を最小化） */
+@media(max-width:760px){
+  .layout[data-view="team"] .sec-ana,
+  .layout[data-view="team"] .side-col{display:none}
+  .layout[data-view="ana"] .sec-team,
+  .layout[data-view="ana"] .side-col{display:none}
+  .layout[data-view="add"] .main-col{display:none}
+}
+/* PCでは目次は先頭のジャンプバー（全セクション表示のまま） */
+
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:var(--shadow)}
 .panel-title{font-size:11px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 
@@ -127,15 +144,15 @@ header h1{font-size:14px;font-weight:800;color:var(--accent);letter-spacing:.02e
 .spd-name img{width:22px;height:22px;image-rendering:pixelated;vertical-align:middle;margin-right:5px}
 
 /* 素早さ調整：その場編集 */
-.spd-edit{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
-.spd-erow{border:1px solid var(--line);border-radius:9px;padding:7px 9px;background:var(--panel2)}
-.spd-ehead{display:flex;align-items:center;gap:6px;margin-bottom:5px}
-.spd-ehead img{width:24px;height:24px;image-rendering:pixelated}
-.spd-ename{font-weight:800;font-size:12px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spd-edit{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.spd-erow{border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--panel2)}
+.spd-ehead{display:flex;align-items:center;gap:5px;margin-bottom:4px}
+.spd-ehead img{width:20px;height:20px;image-rendering:pixelated}
+.spd-ename{font-weight:800;font-size:11px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .spd-sbase{font-size:10px;color:var(--faint);font-weight:700;flex-shrink:0}
-.spd-ecur{font-size:11px;color:var(--muted);flex-shrink:0;white-space:nowrap}
-.spd-ecur b{font-size:16px;color:var(--accent)}
-.spd-ecur i{font-style:normal;color:var(--faint);font-size:10px}
+.spd-ecur{font-size:10px;color:var(--muted);flex-shrink:0;white-space:nowrap}
+.spd-ecur b{font-size:13px;color:var(--accent)}
+.spd-ecur i{font-style:normal;color:var(--faint);font-size:9px}
 .spd-ecur .spd-rk{color:var(--warn);font-weight:800;font-size:11px}
 .spd-ctrl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 /* S努力値スライダー（0〜32 / 0〜252） */
@@ -251,14 +268,21 @@ body[data-theme="dark"] .bench-row.thr{background:#2e2316}
 .dmg-ko.kh{background:#fff6df;color:#b07d11}
 .dmg-ko.kl{background:var(--line2);color:var(--muted)}
 .dmg-r2{display:flex;align-items:center;gap:8px}
-.dmg-bar{flex:1;height:9px;background:var(--line2);border-radius:5px;overflow:hidden;min-width:60px}
-.dmg-bar i{display:block;height:100%;border-radius:5px}
-.dmg-bar i.k1{background:var(--bad)}
-.dmg-bar i.kr{background:var(--warn)}
-.dmg-bar i.kh{background:var(--accent2)}
-.dmg-bar i.kl{background:var(--good)}
+/* 体力バー：左=残りHP（実機同様 右→左に減る）。空き(右)=受けたダメージ */
+.dmg-bar{flex:1;height:10px;background:var(--line2);border-radius:5px;overflow:hidden;min-width:60px;display:flex}
+.dmg-bar i{display:block;height:100%}
+.dmg-bar i.hp-min{transition:width .14s}
+.dmg-bar i.hp-ok{background:var(--good)}
+.dmg-bar i.hp-warn{background:var(--warn)}
+.dmg-bar i.hp-dead{background:var(--bad)}
+.dmg-bar i.hp-band{background:rgba(217,83,79,.30)}
+body[data-theme="dark"] .dmg-bar i.hp-band{background:rgba(236,113,109,.32)}
 .dmg-num{font-size:11px;color:var(--text);white-space:nowrap}
 .dmg-num b{color:var(--accent)}
+/* 入力条件バー（計算モード＋天候） */
+.dmg-cond{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px;padding:7px 9px;background:var(--panel2);border:1px solid var(--line);border-radius:9px}
+.dmg-cond-grp{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.dmg-ctrls.single{grid-template-columns:1fr}
 
 /* カード内インライン編集 */
 .pitem-in{border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:11px;border-radius:5px;padding:3px 6px;width:calc(100% - 14px);font-family:inherit;cursor:pointer}
@@ -280,7 +304,11 @@ input.pitem-in.combo-in{width:100%}
 .tip:hover,.tip:focus{background:var(--accent);outline:none}
 .tip::after{content:attr(data-tip);position:absolute;top:150%;left:0;background:#26304a;color:#fff;font-size:11px;font-weight:500;line-height:1.55;letter-spacing:0;text-transform:none;text-align:left;padding:8px 11px;border-radius:8px;width:max-content;max-width:240px;white-space:normal;box-shadow:0 8px 24px rgba(30,40,80,.32);opacity:0;visibility:hidden;transform:translateY(-3px);transition:.15s;z-index:300;pointer-events:none}
 .tip:hover::after,.tip:focus::after{opacity:1;visibility:visible;transform:translateY(0)}
-@media(max-width:760px){.tip::after{max-width:200px;left:auto;right:0}}
+/* スマホ：?吹き出しは画面中央下に固定（はみ出し防止＝真ん中寄せ表示） */
+@media(max-width:760px){
+  .tip::after{position:fixed;left:50%;right:auto;top:auto;bottom:14px;transform:translateX(-50%) translateY(4px);max-width:90vw;width:max-content}
+  .tip:hover::after,.tip:focus::after{transform:translateX(-50%) translateY(0)}
+}
 
 /* 分析 */
 .ana-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
@@ -357,6 +385,16 @@ input.pitem-in.combo-in{width:100%}
 .modal-raw-tog{color:var(--faint);font-size:10px;cursor:pointer;margin-top:12px;user-select:none}
 .modal-raw{font-family:'Consolas',monospace;font-size:10px;color:var(--muted);margin-top:6px;white-space:pre-wrap;background:var(--panel2);padding:8px;border-radius:6px}
 .tmpl-sel{width:100%;background:var(--hover);border:1px solid var(--accent2);border-radius:7px;color:var(--accent);padding:7px;font-size:11px;font-weight:600;margin-bottom:10px}
+/* 追加モーダル内タブ（詳細/所持/提案/インポート） */
+.modal-ptabs{margin-bottom:10px}
+.modal-addlist{min-height:120px}
+.modal-addlist .list{max-height:56vh}
+/* 使い方メニュー */
+.help-modal{width:520px}
+.help-list{display:flex;flex-direction:column;gap:9px}
+.help-item{border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:var(--panel2)}
+.help-h{font-size:12px;font-weight:800;color:var(--accent);margin-bottom:3px}
+.help-b{font-size:11.5px;color:var(--text);line-height:1.65}
 
 /* 実数値（自動計算）表示 */
 .ev-real{width:54px;text-align:center;font-size:12px;font-weight:700;color:var(--accent);background:var(--hover);border:1px solid var(--line);border-radius:6px;padding:5px 4px;flex-shrink:0}
