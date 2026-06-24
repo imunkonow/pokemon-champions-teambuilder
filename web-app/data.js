@@ -27,5 +27,6 @@ window.PCDATA = (function () {
     BASE_STATS,
     ITEMS:          R.ITEMS          || [],
     OWNED_MD_TEXT:  R.OWNED_MD_TEXT  || '',
+    TEMPLATES:      R.TEMPLATES      || [],
   }
 })()

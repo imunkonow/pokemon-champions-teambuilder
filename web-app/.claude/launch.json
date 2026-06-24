@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "pokemon-web-app",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "-p", "5500", "."],
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["serve.py", "5500"],
       "port": 5500
     }
   ]

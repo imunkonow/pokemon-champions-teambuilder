@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ポケモンチャンピオンズ チームビルダー</title>
+<title>ダメージ計算 — ポケモンチャンピオンズ</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23fff' stroke='%23222' stroke-width='6'/%3E%3Cpath d='M5 50a45 45 0 0 1 90 0z' fill='%23e3350d'/%3E%3Cline x1='5' y1='50' x2='95' y2='50' stroke='%23222' stroke-width='6'/%3E%3Ccircle cx='50' cy='50' r='14' fill='%23fff' stroke='%23222' stroke-width='6'/%3E%3C/svg%3E">
 
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -20,13 +20,22 @@
 </head>
 <body>
 <div id="root"></div>
-
-<!-- アプリ本体は app-*.js に分割（編集時は該当ファイルのみ読めばよい＝token節約）。
-     boot.js が fetch→連結→Babel変換し単一スコープで eval（分割しても従来どおり1スコープで動く）。
-     ページ別エントリ: index.html=全機能 / damage.html / speed.html は app-core.js を共有参照。 -->
 <script src="./boot.js?v=13"></script>
 <script>
-window.PC_BOOT(['./app-core.js','./app-speed.js','./app-damage.js','./app-main.js'])
+window.PC_BOOT(['./app-core.js','./app-damage.js'], `
+function DamagePage(){
+  const [team]=useStandaloneTeam()
+  return (
+    <PageShell active="damage" title="ダメージ計算">
+      <div className="panel page-panel">
+        <div className="panel-title"><span>ダメージ計算</span></div>
+        <DamageView team={team} evMode={EV_MODE} format={localStorage.getItem('pc_format')||'single'}/>
+      </div>
+    </PageShell>
+  )
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<DamagePage/>)
+`)
 </script>
 </body>
 </html>
